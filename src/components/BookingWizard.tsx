@@ -283,9 +283,16 @@ export default function BookingWizard({ services, settings }: { services: any[],
                 required 
                 type="tel" 
                 className="w-full p-4 border border-[#F3E8E8] bg-white rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none transition-all text-[#3A3335] shadow-[0_2px_10px_rgba(0,0,0,0.01)]"
-                placeholder="(00) 00000-0000"
+                placeholder="(11) 99999-9999"
                 value={formData.phone}
-                onChange={e => setFormData({...formData, phone: e.target.value})}
+                onChange={e => {
+                  let v = e.target.value.replace(/\D/g, '');
+                  if (v.length > 11) v = v.substring(0, 11);
+                  if (v.length > 2) v = `(${v.substring(0,2)}) ${v.substring(2)}`;
+                  if (v.length > 10) v = `${v.substring(0,10)}-${v.substring(10)}`;
+                  else if (v.length > 9) v = `${v.substring(0,9)}-${v.substring(9)}`;
+                  setFormData({...formData, phone: v});
+                }}
               />
             </div>
             <div>

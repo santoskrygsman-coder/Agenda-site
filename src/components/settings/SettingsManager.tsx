@@ -108,7 +108,20 @@ export default function SettingsManager() {
                 {settings.whatsapp && <span className="text-[#5A7A66] flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#5A7A66]"></div> Configurado</span>}
               </label>
               <div className="flex gap-2">
-                <input type="text" value={settings.whatsapp || ''} onChange={e => setSettings({...settings, whatsapp: e.target.value})} placeholder="5511999999999" className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-medium transition-all" />
+                <input 
+                  type="text" 
+                  value={settings.whatsapp || ''} 
+                  onChange={e => {
+                    let v = e.target.value.replace(/\D/g, '');
+                    if (v.length > 11) v = v.substring(0, 11);
+                    if (v.length > 2) v = `(${v.substring(0,2)}) ${v.substring(2)}`;
+                    if (v.length > 10) v = `${v.substring(0,10)}-${v.substring(10)}`;
+                    else if (v.length > 9) v = `${v.substring(0,9)}-${v.substring(9)}`;
+                    setSettings({...settings, whatsapp: v});
+                  }} 
+                  placeholder="(11) 99999-9999" 
+                  className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-medium transition-all" 
+                />
                 <button onClick={handleTestWhatsApp} className="px-5 py-3.5 bg-[#E9F0EC] text-[#5A7A66] font-bold text-sm tracking-wide rounded-xl hover:bg-[#D5E2D9] transition-all whitespace-nowrap active:scale-[0.98]"><Smartphone size={18} className="inline mr-2"/> TESTAR</button>
               </div>
             </div>
