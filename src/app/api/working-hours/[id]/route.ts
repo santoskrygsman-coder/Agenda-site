@@ -11,6 +11,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
       data: {
         startTime: body.startTime,
         endTime: body.endTime,
+        breakStart: body.breakStart,
+        breakEnd: body.breakEnd,
         active: body.active
       }
     });

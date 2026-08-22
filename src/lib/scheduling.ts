@@ -40,11 +40,26 @@ export async function isTimeAvailable(dateStr: string, startTime: string, durati
     }
   }
 
-  // 4. Conflito com agendamentos (PENDING ou CONFIRMED)
+  // 4. Configurações de Regra (Settings)
+  const settings = await prisma.settings.findFirst();
+  
+  if (settings) {
+    // Regra de antecedência
+    const now = new Date();
+    const diffMinutes = (startObj.getTime() - now.getTime()) / (1000 * 60);
+    if (diffMinutes < settings.minAdvanceMinutes) return false;
+  }
+
+  // 5. Conflito com agendamentos (PENDING ou CONFIRMED)
+  const statusesToCheck = ["CONFIRMED"];
+  if (!settings || settings.pendingBlocksSlot) {
+    statusesToCheck.push("PENDING");
+  }
+
   const appointments = await prisma.appointment.findMany({
     where: {
       date: dateStr,
-      status: { in: ["PENDING", "CONFIRMED"] }
+      status: { in: statusesToCheck }
     }
   });
 

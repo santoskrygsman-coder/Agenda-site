@@ -25,39 +25,38 @@ export class WhatsAppService {
   }
 
   /**
-   * Mensagem para quando a cliente acaba de solicitar um horário (PENDING)
-   * (Usado pela designer para responder a solicitação pendente)
+   * Applica o template substituindo variáveis
    */
-  public static getPendingAdminLink(clientName: string, phone: string, date: string, time: string, serviceName: string, price: number): string {
-    const msg = `✨ NOVA SOLICITAÇÃO DE AGENDAMENTO\n\n👤 Cliente: ${clientName}\n📱 WhatsApp: ${phone}\n📅 Data: ${date}\n⏰ Horário: ${time}\n✨ Procedimento: ${serviceName}\n💰 Valor: R$ ${price.toFixed(2)}\n\n🟡 Status: AGUARDANDO CONFIRMAÇÃO`;
+  private static parseTemplate(template: string, data: any): string {
+    return template
+      .replace(/{cliente}/g, data.clientName)
+      .replace(/{data}/g, data.date)
+      .replace(/{horario}/g, data.time)
+      .replace(/{procedimento}/g, data.serviceName)
+      .replace(/{valor}/g, data.price ? `R$ ${data.price.toFixed(2)}` : "");
+  }
+
+  /**
+   * Mensagem para quando a cliente acaba de solicitar um horário (PENDING)
+   */
+  public static getPendingAdminLink(clientName: string, phone: string, date: string, time: string, serviceName: string, price: number, template: string): string {
+    const msg = this.parseTemplate(template, { clientName, date, time, serviceName, price });
     return this.generateWaMeLink(phone, msg);
   }
 
   /**
    * Mensagem para quando o agendamento é CONFIRMADO
    */
-  public static getConfirmedLink(clientName: string, phone: string, date: string, time: string, serviceName: string, price: number): string {
-    const msg = `✨ AGENDAMENTO CONFIRMADO\n\nOlá, ${clientName}! 💕\nSeu horário foi confirmado!\n\n📅 Data: ${date}\n⏰ Horário: ${time}\n✨ Procedimento: ${serviceName}\n💰 Valor: R$ ${price.toFixed(2)}\n\nEstamos te esperando! 💕`;
+  public static getConfirmedLink(clientName: string, phone: string, date: string, time: string, serviceName: string, price: number, template: string): string {
+    const msg = this.parseTemplate(template, { clientName, date, time, serviceName, price });
     return this.generateWaMeLink(phone, msg);
   }
 
   /**
-   * Mensagem para quando o agendamento é RECUSADO
+   * Mensagem para quando o agendamento é RECUSADO/CANCELADO
    */
-  public static getRejectedLink(clientName: string, phone: string, date: string, time: string, reason?: string): string {
-    let msg = `Olá, ${clientName}! 💕\n\nInfelizmente não conseguimos confirmar seu horário.\n\n📅 Data: ${date}\n⏰ Horário: ${time}\n`;
-    if (reason) {
-      msg += `Motivo: ${reason}\n\n`;
-    }
-    msg += `Entre em contato conosco para verificarmos outro horário disponível. 💕`;
-    return this.generateWaMeLink(phone, msg);
-  }
-
-  /**
-   * Mensagem para quando o agendamento é CANCELADO
-   */
-  public static getCancelledLink(clientName: string, phone: string, date: string, time: string): string {
-    const msg = `Olá, ${clientName}.\n\nSeu agendamento para o dia ${date} às ${time} foi CANCELADO.\n\nQualquer dúvida, estamos à disposição.`;
+  public static getRejectedLink(clientName: string, phone: string, date: string, time: string, template: string): string {
+    const msg = this.parseTemplate(template, { clientName, date, time, serviceName: "", price: 0 });
     return this.generateWaMeLink(phone, msg);
   }
 }

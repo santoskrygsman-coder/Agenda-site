@@ -44,6 +44,19 @@ async function main() {
       data: s
     });
   }
+  console.log('Serviços criados/atualizados!');
+
+  const settingsCount = await prisma.settings.count();
+  if (settingsCount === 0) {
+    await prisma.settings.create({
+      data: {
+        professionalName: "Designer de Sobrancelhas",
+        specialty: "Especialista em olhar",
+        whatsapp: "5511999999999",
+      }
+    });
+    console.log('Configurações criadas!');
+  }
 
   console.log('Seed concluído com sucesso!');
 }

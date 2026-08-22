@@ -32,11 +32,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ times: [] });
   }
 
-  // Get existing appointments (Pending or Confirmed)
+  // Carregar configurações do sistema
+  const settings = await prisma.settings.findFirst();
+
+  const statusesToCheck = ["CONFIRMED"];
+  if (!settings || settings.pendingBlocksSlot) {
+    statusesToCheck.push("PENDING");
+  }
+
+  // Get existing appointments
   const appointments = await prisma.appointment.findMany({
     where: {
       date: dateStr,
-      status: { in: ["PENDING", "CONFIRMED"] }
+      status: { in: statusesToCheck }
     }
   });
 
@@ -56,8 +64,9 @@ export async function GET(request: Request) {
   while (addMinutes(current, duration) <= end) {
     const slotEnd = addMinutes(current, duration);
     
-    // Check if slot is in the past
-    if (isBefore(current, now)) {
+    // Regra de antecedência mínima
+    const diffMinutes = (current.getTime() - now.getTime()) / (1000 * 60);
+    if (diffMinutes < (settings?.minAdvanceMinutes || 0)) {
       current = addMinutes(current, 30);
       continue;
     }
@@ -89,7 +98,8 @@ export async function GET(request: Request) {
       slots.push(format(current, "HH:mm"));
     }
 
-    current = addMinutes(current, 60); // Incremento de 60 mins para não ficar tão denso (ou poderia ser 30)
+    // O incremento pode ser 30 min para gerar mais opções de horários se os serviços tiverem durações variadas.
+    current = addMinutes(current, 30);
   }
 
   return NextResponse.json({ times: slots });

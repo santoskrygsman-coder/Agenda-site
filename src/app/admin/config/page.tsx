@@ -1,24 +1,28 @@
-import { prisma } from "@/lib/prisma";
-import { Settings } from "lucide-react";
+import SettingsManager from "@/components/settings/SettingsManager";
+import BlockedDatesManager from "@/components/settings/BlockedDatesManager";
 import WorkingHoursManager from "@/components/WorkingHoursManager";
-import ServicesManager from "@/components/ServicesManager";
-
-export const dynamic = "force-dynamic";
+import { prisma } from "@/lib/prisma";
 
 export default async function ConfigPage() {
-  const services = await prisma.service.findMany({ orderBy: { name: 'asc' } });
-  const workingHours = await prisma.workingHours.findMany({ orderBy: { weekday: 'asc' } });
+  // Fetch working hours initial data
+  const workingHours = await prisma.workingHours.findMany({
+    orderBy: { weekday: "asc" },
+  });
 
   return (
-    <div className="space-y-6 animate-in fade-in pb-20 sm:pb-0">
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 flex justify-between items-center">
-        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <Settings className="text-pink-600" /> Configurações
-        </h1>
+    <div className="max-w-4xl mx-auto space-y-8 pb-10">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-800">Configurações</h1>
+        <p className="text-gray-500 mt-2">
+          Gerencie o seu perfil, regras de agendamento, comunicação e horários.
+        </p>
       </div>
 
-      <WorkingHoursManager initialWorkingHours={workingHours} />
-      <ServicesManager initialServices={services} />
+      <div className="space-y-10">
+        <SettingsManager />
+        <WorkingHoursManager initialWorkingHours={workingHours} />
+        <BlockedDatesManager />
+      </div>
     </div>
   );
 }

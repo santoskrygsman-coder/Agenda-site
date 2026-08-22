@@ -7,7 +7,7 @@ import { WhatsAppService } from "@/lib/whatsapp";
 
 import { useRouter } from "next/navigation";
 
-export default function AppointmentCardAdmin({ appointment }: { appointment: any }) {
+export default function AppointmentCardAdmin({ appointment, settings }: { appointment: any, settings: any }) {
   const [status, setStatus] = useState(appointment.status);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -43,13 +43,13 @@ export default function AppointmentCardAdmin({ appointment }: { appointment: any
     const { client, service, startTime } = appointment;
     
     if (status === "PENDING") {
-      return WhatsAppService.getPendingAdminLink(client.name, client.phone, dateFormatted, startTime, service.name, service.price);
+      return WhatsAppService.getPendingAdminLink(client.name, client.phone, dateFormatted, startTime, service.name, service.price, settings?.msgNewRequest || "");
     } else if (status === "CONFIRMED") {
-      return WhatsAppService.getConfirmedLink(client.name, client.phone, dateFormatted, startTime, service.name, service.price);
+      return WhatsAppService.getConfirmedLink(client.name, client.phone, dateFormatted, startTime, service.name, service.price, settings?.msgConfirmed || "");
     } else if (status === "REJECTED") {
-      return WhatsAppService.getRejectedLink(client.name, client.phone, dateFormatted, startTime);
+      return WhatsAppService.getRejectedLink(client.name, client.phone, dateFormatted, startTime, settings?.msgRejected || "");
     } else if (status === "CANCELLED") {
-      return WhatsAppService.getCancelledLink(client.name, client.phone, dateFormatted, startTime);
+      return WhatsAppService.getRejectedLink(client.name, client.phone, dateFormatted, startTime, settings?.msgRejected || "");
     }
     return "#";
   };

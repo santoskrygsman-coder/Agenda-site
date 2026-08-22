@@ -15,6 +15,8 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
     orderBy: { startTime: 'asc' }
   });
 
+  const settings = await prisma.settings.findFirst();
+
   return (
     <div className="space-y-6 animate-in fade-in pb-20 sm:pb-0">
       <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
@@ -43,7 +45,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: { dat
           </div>
         ) : (
           appointments.map(appt => (
-            <AppointmentCardAdmin key={appt.id} appointment={appt} />
+            <AppointmentCardAdmin key={appt.id} appointment={appt} settings={settings} />
           ))
         )}
       </div>

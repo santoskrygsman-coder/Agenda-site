@@ -71,3 +71,21 @@ model BlockedDate {
   date      String   @unique // Formato YYYY-MM-DD
   reason    String?
 }
+
+model Settings {
+  id                 String   @id @default(cuid())
+  professionalName   String   @default("Designer de Sobrancelhas")
+  specialty          String   @default("Especialista em olhar")
+  description        String?
+  address            String?
+  whatsapp           String?
+  instagram          String?
+  
+  msgNewRequest      String   @default("✨ Nova solicitação de agendamento\n\nCliente: {cliente}\nData: {data}\nHorário: {horario}\nProcedimento: {procedimento}\n\nAguardando confirmação.")
+  msgConfirmed       String   @default("✅ Agendamento Confirmado!\n\nOlá {cliente}, seu horário para {procedimento} no dia {data} às {horario} está confirmado.")
+  msgRejected        String   @default("❌ Agendamento Não Confirmado\n\nOlá {cliente}, infelizmente não poderemos atender sua solicitação para o dia {data} às {horario}.")
+  
+  minAdvanceMinutes  Int      @default(30)
+  maxDaysAhead       Int      @default(30)
+  pendingBlocksSlot  Boolean  @default(true)
+}

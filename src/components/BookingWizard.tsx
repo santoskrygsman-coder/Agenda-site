@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, isBefore, startOfDay } from "date-fns";
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, isBefore, startOfDay, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Clock, CalendarIcon, Scissors, CheckCircle, ArrowLeft } from "lucide-react";
 
-export default function BookingWizard({ services }: { services: any[] }) {
+export default function BookingWizard({ services, settings }: { services: any[], settings: any }) {
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -88,6 +88,7 @@ export default function BookingWizard({ services }: { services: any[] }) {
     const start = startOfMonth(currentMonth);
     const end = endOfMonth(currentMonth);
     const days = eachDayOfInterval({ start, end });
+    const maxFutureDate = addDays(startOfDay(new Date()), settings.maxDaysAhead || 30);
     
     return (
       <div className="mt-4">
@@ -111,15 +112,17 @@ export default function BookingWizard({ services }: { services: any[] }) {
           ))}
           {days.map(day => {
             const isPast = isBefore(day, startOfDay(new Date()));
+            const isTooFar = isBefore(maxFutureDate, day);
             const isSelected = selectedDate && isSameDay(day, selectedDate);
+            const disabled = isPast || isTooFar;
             return (
               <button
                 key={day.toISOString()}
-                disabled={isPast}
+                disabled={disabled}
                 onClick={() => handleDateSelect(day)}
                 className={`p-3 rounded-full text-center transition-colors ${
                   isSelected ? "bg-pink-500 text-white font-bold" :
-                  isPast ? "text-gray-300 cursor-not-allowed" :
+                  disabled ? "text-gray-300 cursor-not-allowed" :
                   "hover:bg-pink-100 text-gray-700"
                 }`}
               >

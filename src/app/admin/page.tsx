@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
   const today = format(new Date(), "yyyy-MM-dd");
+  const settings = await prisma.settings.findFirst();
 
   const pending = await prisma.appointment.findMany({
     where: { status: "PENDING" },
@@ -66,7 +67,7 @@ export default async function AdminDashboard() {
         ) : (
           <div className="space-y-4">
             {pending.map(appt => (
-              <AppointmentCardAdmin key={appt.id} appointment={appt} />
+              <AppointmentCardAdmin key={appt.id} appointment={appt} settings={settings} />
             ))}
           </div>
         )}
@@ -83,7 +84,7 @@ export default async function AdminDashboard() {
         ) : (
           <div className="space-y-4">
             {todaysAppointments.map(appt => (
-              <AppointmentCardAdmin key={appt.id} appointment={appt} />
+              <AppointmentCardAdmin key={appt.id} appointment={appt} settings={settings} />
             ))}
           </div>
         )}

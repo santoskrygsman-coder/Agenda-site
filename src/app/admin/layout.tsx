@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, Settings, Users, Home as HomeIcon } from "lucide-react";
+import { CalendarDays, Settings, Users, Home as HomeIcon, Scissors } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -13,6 +13,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <NavItem href="/admin" icon={<HomeIcon size={20} />} text="Dashboard" />
           <NavItem href="/admin/agenda" icon={<CalendarDays size={20} />} text="Agenda" />
           <NavItem href="/admin/clientes" icon={<Users size={20} />} text="Clientes" />
+          <NavItem href="/admin/procedimentos" icon={<Scissors size={20} />} text="Procedimentos" />
           <NavItem href="/admin/config" icon={<Settings size={20} />} text="Configurações" />
         </nav>
       </aside>
@@ -26,10 +27,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </main>
 
       {/* Bottom Navigation Mobile */}
-      <nav className="sm:hidden fixed bottom-0 w-full bg-white border-t border-gray-200 flex justify-around items-center h-16 px-2 z-50">
+      <nav className="sm:hidden fixed bottom-0 w-full bg-white border-t border-gray-200 flex justify-around items-center h-16 px-1 z-50">
         <NavItem href="/admin" icon={<HomeIcon size={24} />} text="Início" mobile />
         <NavItem href="/admin/agenda" icon={<CalendarDays size={24} />} text="Agenda" mobile />
         <NavItem href="/admin/clientes" icon={<Users size={24} />} text="Clientes" mobile />
+        <NavItem href="/admin/procedimentos" icon={<Scissors size={24} />} text="Serviços" mobile />
         <NavItem href="/admin/config" icon={<Settings size={24} />} text="Config" mobile />
       </nav>
     </div>
