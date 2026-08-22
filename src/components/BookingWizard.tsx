@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, isBefore, startOfDay, addDays } from "date-fns";
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isBefore, startOfDay, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Clock, CalendarIcon, Scissors, CheckCircle, ArrowLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, CalendarIcon, CheckCircle, ArrowLeft, Heart, Sparkles, MessageCircle } from "lucide-react";
 
 export default function BookingWizard({ services, settings }: { services: any[], settings: any }) {
   const [step, setStep] = useState(1);
@@ -91,22 +91,22 @@ export default function BookingWizard({ services, settings }: { services: any[],
     const maxFutureDate = addDays(startOfDay(new Date()), settings.maxDaysAhead || 30);
     
     return (
-      <div className="mt-4">
-        <div className="flex justify-between items-center mb-4">
-          <button onClick={() => handleMonthChange(-1)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
+      <div className="mt-6">
+        <div className="flex justify-between items-center mb-6">
+          <button onClick={() => handleMonthChange(-1)} className="p-2 text-[#8B7E7F] hover:text-[#B98389] hover:bg-[#FFF5F5] rounded-full transition-colors">
             <ChevronLeft size={20} />
           </button>
-          <h3 className="font-semibold text-lg capitalize">{format(currentMonth, "MMMM yyyy", { locale: ptBR })}</h3>
-          <button onClick={() => handleMonthChange(1)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
+          <h3 className="font-medium text-lg capitalize text-[#3A3335]">{format(currentMonth, "MMMM yyyy", { locale: ptBR })}</h3>
+          <button onClick={() => handleMonthChange(1)} className="p-2 text-[#8B7E7F] hover:text-[#B98389] hover:bg-[#FFF5F5] rounded-full transition-colors">
             <ChevronRight size={20} />
           </button>
         </div>
         
-        <div className="grid grid-cols-7 gap-2 mb-2 text-center text-sm font-medium text-gray-500">
+        <div className="grid grid-cols-7 gap-1 mb-2 text-center text-xs font-semibold text-[#A99D9E]">
           <div>D</div><div>S</div><div>T</div><div>Q</div><div>Q</div><div>S</div><div>S</div>
         </div>
         
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {Array.from({ length: start.getDay() }).map((_, i) => (
             <div key={`empty-${i}`} />
           ))}
@@ -115,18 +115,20 @@ export default function BookingWizard({ services, settings }: { services: any[],
             const isTooFar = isBefore(maxFutureDate, day);
             const isSelected = selectedDate && isSameDay(day, selectedDate);
             const disabled = isPast || isTooFar;
+            
             return (
               <button
                 key={day.toISOString()}
                 disabled={disabled}
                 onClick={() => handleDateSelect(day)}
-                className={`p-3 rounded-full text-center transition-colors ${
-                  isSelected ? "bg-pink-500 text-white font-bold" :
-                  disabled ? "text-gray-300 cursor-not-allowed" :
-                  "hover:bg-pink-100 text-gray-700"
+                className={`relative aspect-square flex flex-col items-center justify-center rounded-full text-center transition-all ${
+                  isSelected ? "bg-[#B98389] text-white font-bold shadow-md shadow-[#B98389]/30" :
+                  disabled ? "text-[#E8DCDC] cursor-not-allowed" :
+                  "hover:bg-[#FFF5F5] hover:text-[#A76D74] text-[#3A3335] font-medium"
                 }`}
               >
                 {format(day, "d")}
+                {isSelected && <span className="absolute bottom-1 w-1 h-1 bg-white rounded-full"></span>}
               </button>
             );
           })}
@@ -136,32 +138,40 @@ export default function BookingWizard({ services, settings }: { services: any[],
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full relative">
       {/* HEADER WIZARD */}
       {step > 1 && step < 5 && (
-        <button onClick={() => setStep(step - 1)} className="flex items-center text-pink-600 mb-4 font-medium">
-          <ArrowLeft size={18} className="mr-1" /> Voltar
+        <button onClick={() => setStep(step - 1)} className="flex items-center text-[#B98389] hover:text-[#A76D74] mb-6 font-medium transition-colors text-sm">
+          <ArrowLeft size={16} className="mr-1" /> Voltar
         </button>
       )}
 
       {/* STEP 1: SERVICES */}
       {step === 1 && (
-        <div className="animate-in slide-in-from-right-4 duration-300">
-          <h2 className="text-xl font-bold mb-4 flex items-center text-gray-800"><Scissors className="mr-2 text-pink-500" /> Escolha o Procedimento</h2>
-          <div className="space-y-3">
-            {services.map(service => (
+        <div className="animate-in slide-in-from-right-4 duration-500">
+          <div className="mb-6 text-center">
+            <h2 className="text-xl font-bold text-[#3A3335] flex items-center justify-center gap-2">
+              <span className="text-[#D4A373] text-xs">✦</span> 
+              Escolha seu procedimento
+              <span className="text-[#D4A373] text-xs">✦</span>
+            </h2>
+            <p className="text-[#8B7E7F] text-sm mt-1 font-medium">Realce sua beleza com um atendimento personalizado.</p>
+          </div>
+          
+          <div className="space-y-4">
+            {services.map((service: any) => (
               <div 
                 key={service.id} 
                 onClick={() => handleServiceSelect(service)}
-                className="p-4 border-2 border-transparent bg-gray-50 rounded-2xl hover:border-pink-300 hover:bg-pink-50 cursor-pointer transition-all shadow-sm"
+                className="p-5 border border-[#F3E8E8] bg-white rounded-2xl hover:border-[#D9A0A0] hover:bg-[#FFF5F5] cursor-pointer transition-all shadow-[0_4px_20px_rgba(0,0,0,0.02)] active:scale-[0.98]"
               >
                 <div className="flex justify-between items-start">
-                  <h3 className="font-bold text-gray-800">{service.name}</h3>
-                  <span className="font-bold text-pink-600">R$ {service.price.toFixed(2)}</span>
+                  <h3 className="font-semibold text-[#3A3335]">{service.name}</h3>
+                  <span className="font-bold text-[#B98389]">R$ {service.price.toFixed(2)}</span>
                 </div>
-                {service.description && <p className="text-sm text-gray-500 mt-1">{service.description}</p>}
-                <div className="mt-2 text-xs font-medium text-gray-400 flex items-center">
-                  <Clock size={12} className="mr-1" /> Duração: {service.duration} min
+                {service.description && <p className="text-sm text-[#8B7E7F] mt-2 leading-relaxed">{service.description}</p>}
+                <div className="mt-3 text-xs font-medium text-[#A99D9E] flex items-center">
+                  <Clock size={12} className="mr-1.5 opacity-70" /> {service.duration} min
                 </div>
               </div>
             ))}
@@ -171,36 +181,54 @@ export default function BookingWizard({ services, settings }: { services: any[],
 
       {/* STEP 2: DATE */}
       {step === 2 && (
-        <div className="animate-in slide-in-from-right-4 duration-300">
-          <h2 className="text-xl font-bold mb-2 flex items-center text-gray-800"><CalendarIcon className="mr-2 text-pink-500" /> Qual dia fica melhor?</h2>
-          <p className="text-gray-500 text-sm">Selecione uma data para {selectedService.name}</p>
-          {renderCalendar()}
+        <div className="animate-in slide-in-from-right-4 duration-500">
+          <div className="mb-2 text-center">
+            <h2 className="text-xl font-bold text-[#3A3335] flex items-center justify-center gap-2">
+              <Heart size={16} className="text-[#B98389]" /> 
+              Escolha seu dia
+            </h2>
+            <p className="text-[#8B7E7F] text-sm mt-1 font-medium">Qual dia combina melhor com você?</p>
+          </div>
+          <div className="bg-white p-4 rounded-3xl border border-[#F3E8E8] shadow-[0_4px_20px_rgba(0,0,0,0.02)] mt-6">
+            {renderCalendar()}
+          </div>
         </div>
       )}
 
       {/* STEP 3: TIME */}
       {step === 3 && (
-        <div className="animate-in slide-in-from-right-4 duration-300">
-          <h2 className="text-xl font-bold mb-2 flex items-center text-gray-800"><Clock className="mr-2 text-pink-500" /> Horários Disponíveis</h2>
-          <p className="text-gray-500 text-sm mb-4">Para o dia {selectedDate ? format(selectedDate, "dd/MM/yyyy") : ""}</p>
+        <div className="animate-in slide-in-from-right-4 duration-500">
+          <div className="mb-6 text-center">
+            <h2 className="text-xl font-bold text-[#3A3335] flex items-center justify-center gap-2">
+              <span className="text-[#D4A373] text-xs">✦</span> 
+              Escolha seu horário
+              <span className="text-[#D4A373] text-xs">✦</span>
+            </h2>
+            <p className="text-[#8B7E7F] text-sm mt-1 font-medium">Horários disponíveis em {selectedDate ? format(selectedDate, "dd/MM") : ""}</p>
+          </div>
           
           {loadingTimes ? (
-            <div className="text-center py-8 text-pink-500">Buscando horários...</div>
+            <div className="text-center py-12 text-[#B98389] flex flex-col items-center gap-3">
+              <div className="w-6 h-6 border-2 border-[#B98389] border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-sm font-medium">Buscando horários...</span>
+            </div>
           ) : availableTimes.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               {availableTimes.map(time => (
                 <button
                   key={time}
                   onClick={() => handleTimeSelect(time)}
-                  className="p-4 rounded-xl border-2 border-gray-200 text-lg font-semibold text-gray-700 hover:border-pink-500 hover:bg-pink-50 hover:text-pink-600 transition-colors"
+                  className="py-4 px-2 rounded-2xl border border-[#F3E8E8] bg-white text-base font-semibold text-[#5A5052] hover:border-[#B98389] hover:bg-[#FFF5F5] hover:text-[#A76D74] transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)] active:scale-95 flex flex-col items-center gap-1"
                 >
                   {time}
                 </button>
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl">
-              Nenhum horário disponível nesta data.
+            <div className="text-center py-10 px-4 text-[#8B7E7F] bg-white border border-[#F3E8E8] rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+              <CalendarIcon size={32} className="mx-auto mb-3 opacity-20" />
+              <p className="font-medium">Nenhum horário disponível.</p>
+              <p className="text-xs mt-1">Por favor, escolha outro dia.</p>
             </div>
           )}
         </div>
@@ -208,44 +236,63 @@ export default function BookingWizard({ services, settings }: { services: any[],
 
       {/* STEP 4: FORM */}
       {step === 4 && (
-        <div className="animate-in slide-in-from-right-4 duration-300">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">Seus Dados</h2>
+        <div className="animate-in slide-in-from-right-4 duration-500">
+          <div className="mb-6 text-center">
+            <h2 className="text-xl font-bold text-[#3A3335] flex items-center justify-center gap-2">
+              <Sparkles size={16} className="text-[#B98389]" /> 
+              Quase lá!
+            </h2>
+            <p className="text-[#8B7E7F] text-sm mt-1 font-medium">Informe seus dados para solicitar seu horário.</p>
+          </div>
           
-          <div className="bg-pink-50 p-4 rounded-xl mb-6">
-            <h3 className="font-bold text-pink-800 mb-2">Resumo do Agendamento</h3>
-            <p className="text-sm text-pink-700"><strong>Procedimento:</strong> {selectedService.name}</p>
-            <p className="text-sm text-pink-700"><strong>Data:</strong> {format(selectedDate!, "dd/MM/yyyy")} às {selectedTime}</p>
-            <p className="text-sm text-pink-700"><strong>Valor:</strong> R$ {selectedService.price.toFixed(2)}</p>
+          <div className="bg-[#FFF5F5] p-5 rounded-2xl mb-6 border border-[#F3E8E8]">
+            <h3 className="font-bold text-[#A76D74] mb-3 flex items-center gap-2 text-sm">
+              <Heart size={14} /> Seu agendamento
+            </h3>
+            <div className="space-y-2">
+              <p className="text-sm text-[#5A5052] flex items-center gap-2">
+                <Sparkles size={14} className="text-[#D4A373]" /> {selectedService.name}
+              </p>
+              <p className="text-sm text-[#5A5052] flex items-center gap-2">
+                <CalendarIcon size={14} className="text-[#D4A373]" /> {format(selectedDate!, "dd/MM/yyyy")}
+              </p>
+              <p className="text-sm text-[#5A5052] flex items-center gap-2">
+                <Clock size={14} className="text-[#D4A373]" /> {selectedTime}
+              </p>
+              <div className="pt-2 mt-2 border-t border-[#F3E8E8]">
+                <p className="text-sm font-bold text-[#A76D74]">R$ {selectedService.price.toFixed(2)}</p>
+              </div>
+            </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
+              <label className="block text-xs font-bold text-[#8B7E7F] mb-1.5 uppercase tracking-wide">Nome Completo</label>
               <input 
                 required 
                 type="text" 
-                className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:outline-none"
-                placeholder="Maria da Silva"
+                className="w-full p-4 border border-[#F3E8E8] bg-white rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none transition-all text-[#3A3335] shadow-[0_2px_10px_rgba(0,0,0,0.01)]"
+                placeholder="Ex: Maria da Silva"
                 value={formData.name}
                 onChange={e => setFormData({...formData, name: e.target.value})}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
+              <label className="block text-xs font-bold text-[#8B7E7F] mb-1.5 uppercase tracking-wide">WhatsApp</label>
               <input 
                 required 
                 type="tel" 
-                className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:outline-none"
+                className="w-full p-4 border border-[#F3E8E8] bg-white rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none transition-all text-[#3A3335] shadow-[0_2px_10px_rgba(0,0,0,0.01)]"
                 placeholder="(00) 00000-0000"
                 value={formData.phone}
                 onChange={e => setFormData({...formData, phone: e.target.value})}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Observação (Opcional)</label>
+              <label className="block text-xs font-bold text-[#8B7E7F] mb-1.5 uppercase tracking-wide">Observação (Opcional)</label>
               <textarea 
-                className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:outline-none"
-                placeholder="Alguma restrição ou dúvida?"
+                className="w-full p-4 border border-[#F3E8E8] bg-white rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none transition-all text-[#3A3335] shadow-[0_2px_10px_rgba(0,0,0,0.01)] resize-none"
+                placeholder="Alguma dúvida ou restrição?"
                 rows={2}
                 value={formData.notes}
                 onChange={e => setFormData({...formData, notes: e.target.value})}
@@ -255,9 +302,9 @@ export default function BookingWizard({ services, settings }: { services: any[],
             <button 
               type="submit" 
               disabled={submitting}
-              className="w-full bg-pink-600 text-white font-bold text-lg p-4 rounded-xl mt-4 hover:bg-pink-700 disabled:opacity-50 transition-colors"
+              className="w-full bg-[#A76D74] text-white font-bold text-sm tracking-wide p-4 rounded-2xl mt-2 hover:bg-[#8A5A60] disabled:opacity-50 transition-all active:scale-[0.98] shadow-lg shadow-[#A76D74]/20 flex justify-center items-center gap-2"
             >
-              {submitting ? "Enviando..." : "ENVIAR SOLICITAÇÃO"}
+              {submitting ? "ENVIANDO..." : <><Sparkles size={16} /> SOLICITAR AGENDAMENTO</>}
             </button>
           </form>
         </div>
@@ -265,25 +312,39 @@ export default function BookingWizard({ services, settings }: { services: any[],
 
       {/* STEP 5: SUCCESS */}
       {step === 5 && (
-        <div className="text-center animate-in zoom-in duration-500 py-8">
-          <div className="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle size={40} />
+        <div className="text-center animate-in zoom-in duration-700 py-10 px-4">
+          <div className="w-20 h-20 bg-[#FFF5F5] text-[#B98389] rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-white shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+            <CheckCircle size={36} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Solicitação Enviada!</h2>
-          <p className="text-gray-600 mb-6">
-            Seu horário foi enviado para análise da profissional. Aguarde a confirmação pelo seu WhatsApp.
+          <h2 className="text-2xl font-bold text-[#3A3335] mb-2 flex justify-center items-center gap-2">
+            <span className="text-[#D4A373] text-sm">✦</span>
+            Solicitação enviada!
+            <Heart size={18} className="text-[#B98389] inline ml-1" />
+          </h2>
+          <p className="text-[#8B7E7F] mb-8 text-sm leading-relaxed max-w-[260px] mx-auto">
+            Seu pedido foi enviado com sucesso. Em breve você receberá a confirmação pelo WhatsApp.
           </p>
           
-          <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl text-left mb-6">
-            <p className="text-sm text-gray-600"><strong>Data:</strong> {format(selectedDate!, "dd/MM/yyyy")}</p>
-            <p className="text-sm text-gray-600"><strong>Horário:</strong> {selectedTime}</p>
-            <p className="text-sm text-gray-600"><strong>Procedimento:</strong> {selectedService.name}</p>
-            <p className="text-sm text-gray-600"><strong>Status:</strong> <span className="text-yellow-600 font-bold bg-yellow-100 px-2 py-0.5 rounded">PENDENTE</span></p>
+          <div className="bg-white border border-[#F3E8E8] p-5 rounded-2xl text-left mb-8 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+            <div className="space-y-3">
+              <div className="flex justify-between items-center pb-3 border-b border-[#F3E8E8]">
+                <span className="text-[#8B7E7F] text-xs uppercase font-bold tracking-wide">Status</span>
+                <span className="text-[#D4A373] text-xs font-bold bg-[#FFF9F2] px-2.5 py-1 rounded-full flex items-center gap-1">
+                  <Clock size={12} /> PENDENTE
+                </span>
+              </div>
+              <p className="text-sm text-[#5A5052] flex items-center gap-3">
+                <CalendarIcon size={16} className="text-[#B98389]" /> {format(selectedDate!, "dd/MM/yyyy")} às {selectedTime}
+              </p>
+              <p className="text-sm text-[#5A5052] flex items-center gap-3">
+                <Sparkles size={16} className="text-[#B98389]" /> {selectedService.name}
+              </p>
+            </div>
           </div>
 
           <button 
             onClick={() => window.location.reload()}
-            className="text-pink-600 font-bold hover:underline"
+            className="text-[#B98389] font-bold text-sm hover:text-[#A76D74] transition-colors uppercase tracking-wide"
           >
             Fazer novo agendamento
           </button>

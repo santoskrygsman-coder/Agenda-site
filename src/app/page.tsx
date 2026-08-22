@@ -12,26 +12,40 @@ export default async function Home() {
   const settings = await prisma.settings.findFirst();
 
   return (
-    <main className="max-w-md mx-auto min-h-screen bg-white shadow-lg sm:rounded-xl sm:my-8 overflow-hidden flex flex-col">
-      <div className="bg-pink-100 p-6 text-center shrink-0">
-        <div className="w-24 h-24 bg-pink-300 rounded-full mx-auto mb-4 overflow-hidden border-4 border-white shadow-sm flex items-center justify-center text-pink-600">
-          <span className="font-bold text-2xl">{settings?.professionalName?.charAt(0) || "P"}</span>
+    <main className="max-w-md mx-auto min-h-screen bg-[#FCFAFA] sm:shadow-2xl sm:shadow-pink-900/5 sm:rounded-[2rem] sm:my-8 overflow-hidden flex flex-col font-sans text-[#3A3335]">
+      {/* HEADER PREMIUM */}
+      <div className="bg-gradient-to-b from-[#FFF5F5] to-[#FCFAFA] px-6 pt-10 pb-6 text-center shrink-0 border-b border-[#F3E8E8]">
+        <div className="w-24 h-24 bg-white rounded-full mx-auto mb-5 overflow-hidden border border-[#F3E8E8] shadow-sm flex items-center justify-center text-[#B98389]">
+          <span className="font-serif italic text-3xl text-[#B98389]">
+            {settings?.professionalName?.charAt(0) || "P"}
+          </span>
         </div>
-        <h1 className="text-2xl font-bold text-gray-800">{settings?.professionalName || "Profissional"}</h1>
-        <p className="text-pink-600 text-sm mt-1">{settings?.specialty || "Especialidade"}</p>
+        
+        <h1 className="text-2xl font-bold tracking-tight text-[#3A3335] flex items-center justify-center gap-2">
+          <span className="text-[#D4A373] text-sm">✦</span>
+          {settings?.professionalName || "Profissional"}
+          <span className="text-[#D4A373] text-sm">✦</span>
+        </h1>
+        
+        <p className="text-[#B98389] text-sm mt-1.5 font-medium tracking-wide uppercase">
+          {settings?.specialty || "Lash & Brow Designer"}
+        </p>
         
         {settings?.address && (
-          <p className="text-gray-600 text-xs mt-3 flex items-center justify-center gap-1">
-            📍 {settings.address}
+          <p className="text-[#8B7E7F] text-xs mt-4 flex items-center justify-center gap-1 font-medium">
+            · {settings.address} ·
           </p>
         )}
         
         {settings?.description && (
-          <p className="text-gray-500 text-sm mt-3 italic">"{settings.description}"</p>
+          <p className="text-[#6B5E5F] text-sm mt-4 font-serif italic px-4 leading-relaxed">
+            "{settings.description}"
+          </p>
         )}
       </div>
       
-      <div className="flex-1 bg-white p-4">
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 bg-[#FCFAFA] p-5 sm:p-8">
         <BookingWizard services={services} settings={settings} />
       </div>
     </main>
