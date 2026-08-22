@@ -88,4 +88,14 @@ model Settings {
   minAdvanceMinutes  Int      @default(30)
   maxDaysAhead       Int      @default(30)
   pendingBlocksSlot  Boolean  @default(true)
+
+  avatarUrl          String?  // Base64 ou URL da foto de perfil
+}
+
+model GalleryImage {
+  id        String   @id @default(cuid())
+  url       String   // Base64 string da imagem
+  order     Int      @default(0)
+  isFeature Boolean  @default(false)
+  createdAt DateTime @default(now())
 }

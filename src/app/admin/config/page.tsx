@@ -1,5 +1,6 @@
 import SettingsManager from "@/components/settings/SettingsManager";
 import BlockedDatesManager from "@/components/settings/BlockedDatesManager";
+import GalleryManager from "@/components/settings/GalleryManager";
 import WorkingHoursManager from "@/components/WorkingHoursManager";
 import { prisma } from "@/lib/prisma";
 
@@ -22,6 +23,7 @@ export default async function ConfigPage() {
 
       <div className="space-y-10">
         <SettingsManager />
+        <GalleryManager />
         <WorkingHoursManager initialWorkingHours={workingHours} />
         <BlockedDatesManager />
       </div>

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import BookingWizard from "@/components/BookingWizard";
+import PublicGallery from "@/components/PublicGallery";
 
 export const dynamic = "force-dynamic";
 
@@ -10,15 +11,22 @@ export default async function Home() {
   });
 
   const settings = await prisma.settings.findFirst();
+  const gallery = await prisma.galleryImage.findMany({
+    orderBy: { order: "asc" }
+  });
 
   return (
     <main className="max-w-md mx-auto min-h-screen bg-[#FCFAFA] sm:shadow-2xl sm:shadow-pink-900/5 sm:rounded-[2rem] sm:my-8 overflow-hidden flex flex-col font-sans text-[#3A3335]">
       {/* HEADER PREMIUM */}
       <div className="bg-gradient-to-b from-[#FFF5F5] to-[#FCFAFA] px-6 pt-10 pb-6 text-center shrink-0 border-b border-[#F3E8E8]">
-        <div className="w-24 h-24 bg-white rounded-full mx-auto mb-5 overflow-hidden border border-[#F3E8E8] shadow-sm flex items-center justify-center text-[#B98389]">
-          <span className="font-serif italic text-3xl text-[#B98389]">
-            {settings?.professionalName?.charAt(0) || "P"}
-          </span>
+        <div className="w-28 h-28 bg-white rounded-full mx-auto mb-5 overflow-hidden border-4 border-white shadow-[0_4px_20px_rgba(0,0,0,0.05)] flex items-center justify-center text-[#B98389]">
+          {settings?.avatarUrl ? (
+            <img src={settings.avatarUrl} alt="Profissional" className="w-full h-full object-cover" />
+          ) : (
+            <span className="font-serif italic text-4xl text-[#B98389]">
+              {settings?.professionalName?.charAt(0) || "P"}
+            </span>
+          )}
         </div>
         
         <h1 className="text-2xl font-bold tracking-tight text-[#3A3335] flex items-center justify-center gap-2">
@@ -46,6 +54,7 @@ export default async function Home() {
       
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 bg-[#FCFAFA] p-5 sm:p-8">
+        <PublicGallery images={gallery} />
         <BookingWizard services={services} settings={settings} />
       </div>
     </main>

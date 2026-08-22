@@ -63,6 +63,70 @@ export default function SettingsManager() {
           </div>
         </div>
 
+        <div className="flex flex-col sm:flex-row gap-6 mb-8 items-center sm:items-start">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-24 h-24 rounded-full bg-[#FCFAFA] border-2 border-[#F3E8E8] flex items-center justify-center overflow-hidden relative group">
+              {settings.avatarUrl ? (
+                <img src={settings.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <User size={32} className="text-[#D9A0A0]" />
+              )}
+              <label className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                <span className="text-[10px] font-bold uppercase tracking-wide">Alterar</span>
+                <input type="file" accept="image/jpeg, image/png, image/webp" className="hidden" onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  
+                  const compressImage = (file: File): Promise<string> => {
+                    return new Promise((resolve) => {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const img = new Image();
+                        img.onload = () => {
+                          const canvas = document.createElement("canvas");
+                          let width = img.width;
+                          let height = img.height;
+                          const max = 600; // Avatar doesn't need to be big
+                          if (width > height && width > max) {
+                            height *= max / width;
+                            width = max;
+                          } else if (height > max) {
+                            width *= max / height;
+                            height = max;
+                          }
+                          canvas.width = width;
+                          canvas.height = height;
+                          const ctx = canvas.getContext("2d");
+                          ctx?.drawImage(img, 0, 0, width, height);
+                          resolve(canvas.toDataURL("image/jpeg", 0.7));
+                        };
+                        img.src = event.target?.result as string;
+                      };
+                      reader.readAsDataURL(file);
+                    });
+                  };
+
+                  const base64 = await compressImage(file);
+                  setSettings({ ...settings, avatarUrl: base64 });
+                }} />
+              </label>
+            </div>
+            {settings.avatarUrl && (
+              <button onClick={() => setSettings({ ...settings, avatarUrl: null })} className="text-[10px] text-[#A76D74] hover:underline uppercase font-bold tracking-wide">
+                Remover foto
+              </button>
+            )}
+          </div>
+          
+          <div className="flex-1 w-full space-y-2">
+            <p className="text-sm font-bold text-[#3A3335]">Foto da Profissional</p>
+            <p className="text-xs text-[#8B7E7F] leading-relaxed">
+              Esta foto aparecerá no topo da sua página de agendamentos, substituindo a logo padrão. Recomendamos uma foto sua de rosto, sorrindo, para gerar conexão, ou o logo da sua marca. <br/>
+              <span className="font-medium text-[#A76D74]">Formatos: JPG, PNG, WEBP. Máx 3MB.</span>
+            </p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide">Seu Nome / Nome do Estúdio</label>
