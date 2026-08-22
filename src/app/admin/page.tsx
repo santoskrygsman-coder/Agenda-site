@@ -35,35 +35,35 @@ export default async function AdminDashboard() {
   });
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-20 sm:pb-0">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-24 sm:pb-0 font-sans text-[#3A3335]">
       
       {/* Cards de Métrica */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
-          <Clock className="text-yellow-500 mb-2" size={24} />
-          <span className="text-3xl font-bold text-gray-800">{pending.length}</span>
-          <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">Pendentes</span>
+        <div className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] flex flex-col items-center justify-center text-center">
+          <Clock className="text-[#D4A373] mb-3" size={26} />
+          <span className="text-3xl font-bold text-[#3A3335]">{pending.length}</span>
+          <span className="text-[10px] text-[#8B7E7F] font-bold uppercase tracking-widest mt-1">Pendentes</span>
         </div>
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
-          <CalendarIcon className="text-green-500 mb-2" size={24} />
-          <span className="text-3xl font-bold text-gray-800">{todaysAppointments.length}</span>
-          <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">Hoje</span>
+        <div className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] flex flex-col items-center justify-center text-center">
+          <CalendarIcon className="text-[#5A7A66] mb-3" size={26} />
+          <span className="text-3xl font-bold text-[#3A3335]">{todaysAppointments.length}</span>
+          <span className="text-[10px] text-[#8B7E7F] font-bold uppercase tracking-widest mt-1">Hoje</span>
         </div>
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
-          <Users className="text-blue-500 mb-2" size={24} />
-          <span className="text-3xl font-bold text-gray-800">{totalClients}</span>
-          <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">Clientes</span>
+        <div className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] flex flex-col items-center justify-center text-center">
+          <Users className="text-[#B98389] mb-3" size={26} />
+          <span className="text-3xl font-bold text-[#3A3335]">{totalClients}</span>
+          <span className="text-[10px] text-[#8B7E7F] font-bold uppercase tracking-widest mt-1">Clientes</span>
         </div>
       </div>
 
       <section>
-        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-          <span className="w-3 h-3 rounded-full bg-yellow-400 mr-2"></span>
+        <h2 className="text-lg font-bold text-[#3A3335] mb-5 flex items-center gap-2">
+          <span className="text-[#D4A373] text-sm">✦</span>
           Solicitações Pendentes
         </h2>
         
         {pending.length === 0 ? (
-          <p className="text-gray-500 text-sm bg-gray-50 p-4 rounded-xl">Nenhuma solicitação pendente no momento.</p>
+          <p className="text-[#8B7E7F] text-sm bg-white border border-[#F3E8E8] p-5 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] text-center font-medium">Nenhuma solicitação pendente no momento.</p>
         ) : (
           <div className="space-y-4">
             {pending.map(appt => (
@@ -74,13 +74,13 @@ export default async function AdminDashboard() {
       </section>
 
       <section>
-        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-          <span className="w-3 h-3 rounded-full bg-green-500 mr-2"></span>
+        <h2 className="text-lg font-bold text-[#3A3335] mb-5 flex items-center gap-2">
+          <span className="text-[#5A7A66] text-sm">✦</span>
           Agendamentos de Hoje
         </h2>
 
         {todaysAppointments.length === 0 ? (
-          <p className="text-gray-500 text-sm bg-gray-50 p-4 rounded-xl">Nenhum agendamento confirmado para hoje.</p>
+          <p className="text-[#8B7E7F] text-sm bg-white border border-[#F3E8E8] p-5 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] text-center font-medium">Nenhum agendamento confirmado para hoje.</p>
         ) : (
           <div className="space-y-4">
             {todaysAppointments.map(appt => (
@@ -92,19 +92,23 @@ export default async function AdminDashboard() {
 
       {nextAppointments.length > 0 && (
         <section>
-          <div className="flex justify-between items-end mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Próximos Agendamentos</h2>
-            <Link href="/admin/agenda" className="text-pink-600 text-sm font-bold hover:underline">Ver Agenda</Link>
+          <div className="flex justify-between items-end mb-5">
+            <h2 className="text-lg font-bold text-[#3A3335] flex items-center gap-2">
+              <span className="text-[#B98389] text-sm">✦</span> Próximos Agendamentos
+            </h2>
+            <Link href="/admin/agenda" className="text-[#B98389] text-xs font-bold hover:text-[#A76D74] uppercase tracking-wide transition-colors">Ver Agenda</Link>
           </div>
           <div className="space-y-3">
             {nextAppointments.map(appt => (
-              <div key={appt.id} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center">
+              <div key={appt.id} className="bg-white p-4 rounded-2xl border border-[#F3E8E8] shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex justify-between items-center transition-all hover:border-[#D9A0A0]">
                 <div>
-                  <p className="font-bold text-gray-800 text-sm">{appt.client.name}</p>
-                  <p className="text-xs text-gray-500">{appt.date.split("-").reverse().join("/")} às {appt.startTime}</p>
+                  <p className="font-bold text-[#3A3335] text-sm">{appt.client.name}</p>
+                  <p className="text-xs text-[#8B7E7F] font-medium mt-0.5 flex items-center gap-1">
+                    <CalendarIcon size={12} className="text-[#D4A373]"/> {appt.date.split("-").reverse().join("/")} às {appt.startTime}
+                  </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs font-bold text-pink-600">{appt.service.name}</p>
+                  <p className="text-xs font-bold text-[#B98389] bg-[#FFF5F5] px-2 py-1 rounded-lg inline-block">{appt.service.name}</p>
                 </div>
               </div>
             ))}

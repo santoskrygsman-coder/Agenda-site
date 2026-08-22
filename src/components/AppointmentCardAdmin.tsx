@@ -55,56 +55,57 @@ export default function AppointmentCardAdmin({ appointment, settings }: { appoin
   };
 
   return (
-    <div className={`bg-white p-4 rounded-2xl shadow-sm border flex flex-col gap-4 ${status === 'CANCELLED' || status === 'REJECTED' ? 'opacity-70 border-gray-200' : 'border-gray-100'}`}>
+    <div className={`bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border flex flex-col gap-5 transition-all ${status === 'CANCELLED' || status === 'REJECTED' ? 'opacity-60 border-[#F3E8E8]' : 'border-[#F3E8E8]'}`}>
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="font-bold text-gray-800 text-lg">{appointment.client.name}</h3>
-          <p className="text-gray-500 text-sm flex items-center gap-1">
-            <MessageCircle size={14} /> {appointment.client.phone}
+          <h3 className="font-bold text-[#3A3335] text-lg tracking-tight">{appointment.client.name}</h3>
+          <p className="text-[#8B7E7F] text-sm flex items-center gap-1.5 mt-1 font-medium">
+            <MessageCircle size={14} className="text-[#D4A373]" /> {appointment.client.phone}
           </p>
         </div>
-        <div className={`px-2 py-1 rounded text-xs font-bold ${
-          status === "PENDING" ? "bg-yellow-100 text-yellow-700" :
-          status === "CONFIRMED" ? "bg-green-100 text-green-700" :
-          status === "CANCELLED" ? "bg-gray-100 text-gray-700" :
-          "bg-red-100 text-red-700"
+        <div className={`px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase ${
+          status === "PENDING" ? "bg-[#FFF9F2] text-[#D4A373]" :
+          status === "CONFIRMED" ? "bg-[#F0F7F4] text-[#5A7A66]" :
+          status === "CANCELLED" ? "bg-[#F3E8E8] text-[#8B7E7F]" :
+          "bg-[#FFF5F5] text-[#A76D74]"
         }`}>
           {status === "PENDING" ? "PENDENTE" : status === "CONFIRMED" ? "CONFIRMADO" : status === "CANCELLED" ? "CANCELADO" : "RECUSADO"}
         </div>
       </div>
 
-      <div className="bg-gray-50 rounded-xl p-3 text-sm text-gray-700 flex flex-col gap-1">
+      <div className="bg-[#FCFAFA] rounded-2xl p-4 text-sm text-[#5A5052] flex flex-col gap-2 border border-[#F3E8E8]">
         <div className="flex items-center gap-2">
-          <Clock size={16} className="text-pink-500" />
+          <Clock size={16} className="text-[#B98389]" />
           <span className="font-semibold">{dateFormatted} - {appointment.startTime} às {appointment.endTime}</span>
         </div>
-        <div>
-          <span className="font-medium text-gray-900">{appointment.service.name}</span> 
-          <span className="text-gray-500"> (R$ {appointment.service.price.toFixed(2)})</span>
+        <div className="flex items-center gap-2">
+          <span className="w-4 flex justify-center text-[#B98389]">✦</span>
+          <span className="font-medium text-[#3A3335]">{appointment.service.name}</span> 
+          <span className="text-[#8B7E7F] font-semibold text-xs ml-auto">R$ {appointment.service.price.toFixed(2)}</span>
         </div>
         {appointment.notes && (
-          <div className="mt-2 text-xs italic text-gray-500">
+          <div className="mt-2 text-xs italic text-[#8B7E7F] border-t border-[#F3E8E8] pt-2">
             " {appointment.notes} "
           </div>
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2.5">
         {status === "PENDING" && (
           <>
             <button 
               disabled={loading}
               onClick={() => handleUpdate("CONFIRMED")}
-              className="flex-1 min-w-[120px] bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+              className="flex-1 min-w-[120px] bg-[#5A7A66] hover:bg-[#4A6454] text-white font-bold text-sm tracking-wide py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 shadow-md shadow-[#5A7A66]/20"
             >
-              <Check size={18} /> Confirmar
+              <Check size={18} /> CONFIRMAR
             </button>
             <button 
               disabled={loading}
               onClick={() => handleUpdate("REJECTED")}
-              className="flex-1 min-w-[120px] bg-red-100 hover:bg-red-200 text-red-600 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+              className="flex-1 min-w-[120px] bg-[#FFF5F5] hover:bg-[#F3E8E8] text-[#A76D74] border border-[#F3E8E8] font-bold text-sm tracking-wide py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
             >
-              <X size={18} /> Recusar
+              <X size={18} /> RECUSAR
             </button>
           </>
         )}
@@ -113,9 +114,9 @@ export default function AppointmentCardAdmin({ appointment, settings }: { appoin
           <button 
             disabled={loading}
             onClick={() => handleUpdate("CANCELLED")}
-            className="flex-1 min-w-[120px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+            className="flex-1 min-w-[120px] bg-[#F3E8E8] hover:bg-[#E8DCDC] text-[#5A5052] font-bold text-sm tracking-wide py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
           >
-            <Trash2 size={18} /> Cancelar
+            <Trash2 size={18} /> CANCELAR
           </button>
         )}
         
@@ -123,11 +124,11 @@ export default function AppointmentCardAdmin({ appointment, settings }: { appoin
           href={getWhatsAppLink()} 
           target="_blank" 
           rel="noreferrer"
-          className="w-full bg-[#25D366] hover:bg-[#1ebd5a] text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+          className="w-full bg-[#25D366] hover:bg-[#1ebd5a] text-white font-bold text-sm tracking-wide py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md shadow-[#25D366]/20"
         >
-          <MessageCircle size={20} /> 
-          {status === "PENDING" ? "Falar no WhatsApp" : 
-           status === "CONFIRMED" ? "Enviar Confirmação" : "Avisar Cliente"}
+          <MessageCircle size={18} /> 
+          {status === "PENDING" ? "FALAR NO WHATSAPP" : 
+           status === "CONFIRMED" ? "ENVIAR CONFIRMAÇÃO" : "AVISAR CLIENTE"}
         </a>
       </div>
     </div>

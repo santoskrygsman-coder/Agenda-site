@@ -10,10 +10,12 @@ export default async function ConfigPage() {
   });
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-10">
+    <div className="max-w-4xl mx-auto space-y-8 pb-10 font-sans text-[#3A3335]">
       <div>
-        <h1 className="text-3xl font-bold text-gray-800">Configurações</h1>
-        <p className="text-gray-500 mt-2">
+        <h1 className="text-3xl font-bold tracking-tight text-[#3A3335] flex items-center gap-2">
+          <span className="text-[#D4A373]">✦</span> Configurações
+        </h1>
+        <p className="text-[#8B7E7F] mt-2 font-medium">
           Gerencie o seu perfil, regras de agendamento, comunicação e horários.
         </p>
       </div>

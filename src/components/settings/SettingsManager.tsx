@@ -43,155 +43,157 @@ export default function SettingsManager() {
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
   };
 
-  if (loading) return <div className="text-center p-8 text-gray-500 animate-pulse">Carregando configurações...</div>;
+  if (loading) return <div className="text-center p-8 text-[#8B7E7F] animate-pulse">Carregando configurações...</div>;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 font-sans text-[#3A3335]">
       {toast && (
-        <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg z-50 font-bold transition-all">
+        <div className="fixed top-4 right-4 bg-[#5A7A66] text-white px-6 py-3 rounded-2xl shadow-xl z-50 font-bold transition-all flex items-center gap-2">
           {toast}
         </div>
       )}
 
       {/* PERFIL PROFISSIONAL */}
-      <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 overflow-hidden">
-        <div className="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
-          <div className="bg-pink-100 p-3 rounded-xl text-pink-600"><User size={24} /></div>
+      <section className="bg-white rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] p-6 overflow-hidden">
+        <div className="flex items-center gap-4 mb-6 border-b border-[#F3E8E8] pb-5">
+          <div className="bg-[#FFF5F5] p-3.5 rounded-2xl text-[#A76D74]"><User size={24} /></div>
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Perfil Profissional</h2>
-            <p className="text-sm text-gray-500">Informações públicas que aparecem na tela de agendamento.</p>
+            <h2 className="text-xl font-bold text-[#3A3335]">Perfil Profissional</h2>
+            <p className="text-sm text-[#8B7E7F] font-medium mt-0.5">Informações públicas que aparecem na tela de agendamento.</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="text-sm font-bold text-gray-600">Seu Nome / Nome do Estúdio</label>
-            <input type="text" value={settings.professionalName || ''} onChange={e => setSettings({...settings, professionalName: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-pink-500 outline-none text-gray-900" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide">Seu Nome / Nome do Estúdio</label>
+            <input type="text" value={settings.professionalName || ''} onChange={e => setSettings({...settings, professionalName: e.target.value})} className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-medium transition-all" />
           </div>
-          <div className="space-y-1">
-            <label className="text-sm font-bold text-gray-600">Frase curta / Especialidade</label>
-            <input type="text" value={settings.specialty || ''} onChange={e => setSettings({...settings, specialty: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-pink-500 outline-none text-gray-900" placeholder="Ex: Especialista em Olhar" />
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide">Frase curta / Especialidade</label>
+            <input type="text" value={settings.specialty || ''} onChange={e => setSettings({...settings, specialty: e.target.value})} className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-medium transition-all" placeholder="Ex: Especialista em Olhar" />
           </div>
-          <div className="space-y-1 sm:col-span-2">
-            <label className="text-sm font-bold text-gray-600">Descrição (Opcional)</label>
-            <textarea value={settings.description || ''} onChange={e => setSettings({...settings, description: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-pink-500 outline-none text-gray-900 h-24" />
+          <div className="space-y-1.5 sm:col-span-2">
+            <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide">Descrição (Opcional)</label>
+            <textarea value={settings.description || ''} onChange={e => setSettings({...settings, description: e.target.value})} className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-medium h-24 resize-none transition-all" />
           </div>
-          <div className="space-y-1 sm:col-span-2">
-            <label className="text-sm font-bold text-gray-600">Endereço (Aparece no topo)</label>
-            <input type="text" value={settings.address || ''} onChange={e => setSettings({...settings, address: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-pink-500 outline-none text-gray-900" />
+          <div className="space-y-1.5 sm:col-span-2">
+            <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide">Endereço (Aparece no topo)</label>
+            <input type="text" value={settings.address || ''} onChange={e => setSettings({...settings, address: e.target.value})} className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-medium transition-all" />
           </div>
-          <div className="space-y-1">
-            <label className="text-sm font-bold text-gray-600">Link do Instagram (Opcional)</label>
-            <input type="text" value={settings.instagram || ''} onChange={e => setSettings({...settings, instagram: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-pink-500 outline-none text-gray-900" placeholder="https://instagram.com/..." />
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide">Link do Instagram (Opcional)</label>
+            <input type="text" value={settings.instagram || ''} onChange={e => setSettings({...settings, instagram: e.target.value})} className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-medium transition-all" placeholder="https://instagram.com/..." />
           </div>
         </div>
-        <button onClick={() => handleSave('Perfil')} disabled={saving} className="mt-6 w-full sm:w-auto px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors flex items-center justify-center gap-2">
-          <Save size={20} /> Salvar Perfil
+        <button onClick={() => handleSave('Perfil')} disabled={saving} className="mt-8 w-full sm:w-auto px-8 py-3.5 bg-[#5A7A66] text-white font-bold text-sm tracking-wide rounded-xl hover:bg-[#4A6454] transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-md shadow-[#5A7A66]/20">
+          <Save size={18} /> SALVAR PERFIL
         </button>
       </section>
 
       {/* WHATSAPP & MENSAGENS */}
-      <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 overflow-hidden">
-        <div className="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
-          <div className="bg-green-100 p-3 rounded-xl text-green-600"><MessageCircle size={24} /></div>
+      <section className="bg-white rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] p-6 overflow-hidden">
+        <div className="flex items-center gap-4 mb-6 border-b border-[#F3E8E8] pb-5">
+          <div className="bg-[#E9F0EC] p-3.5 rounded-2xl text-[#5A7A66]"><MessageCircle size={24} /></div>
           <div>
-            <h2 className="text-xl font-bold text-gray-800">WhatsApp & Mensagens</h2>
-            <p className="text-sm text-gray-500">Configure seu número e os textos automáticos (via wa.me).</p>
+            <h2 className="text-xl font-bold text-[#3A3335]">WhatsApp & Mensagens</h2>
+            <p className="text-sm text-[#8B7E7F] font-medium mt-0.5">Configure seu número e os textos automáticos (via wa.me).</p>
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row gap-4 items-end">
-            <div className="flex-1 w-full space-y-1">
-              <label className="text-sm font-bold text-gray-600 flex justify-between">
+            <div className="flex-1 w-full space-y-1.5">
+              <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide flex justify-between">
                 <span>Número do WhatsApp</span>
-                {settings.whatsapp && <span className="text-green-500 flex items-center gap-1 text-xs"><div className="w-2 h-2 rounded-full bg-green-500"></div> Configurado</span>}
+                {settings.whatsapp && <span className="text-[#5A7A66] flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#5A7A66]"></div> Configurado</span>}
               </label>
               <div className="flex gap-2">
-                <input type="text" value={settings.whatsapp || ''} onChange={e => setSettings({...settings, whatsapp: e.target.value})} placeholder="5511999999999" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-pink-500 outline-none text-gray-900" />
-                <button onClick={handleTestWhatsApp} className="px-4 py-3 bg-green-50 text-green-600 font-bold rounded-xl hover:bg-green-100 border border-green-200 whitespace-nowrap"><Smartphone size={20} className="inline mr-2"/> Testar</button>
+                <input type="text" value={settings.whatsapp || ''} onChange={e => setSettings({...settings, whatsapp: e.target.value})} placeholder="5511999999999" className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-medium transition-all" />
+                <button onClick={handleTestWhatsApp} className="px-5 py-3.5 bg-[#E9F0EC] text-[#5A7A66] font-bold text-sm tracking-wide rounded-xl hover:bg-[#D5E2D9] transition-all whitespace-nowrap active:scale-[0.98]"><Smartphone size={18} className="inline mr-2"/> TESTAR</button>
               </div>
             </div>
           </div>
 
-          <p className="text-xs text-gray-500 italic bg-gray-50 p-3 rounded-lg">ℹ️ Atualmente as mensagens são abertas no WhatsApp da cliente ou no seu WhatsApp para envio manual (sem custos de API).</p>
+          <p className="text-xs text-[#8B7E7F] font-medium bg-[#FCFAFA] border border-[#F3E8E8] p-4 rounded-xl leading-relaxed">✦ Atualmente as mensagens são abertas no WhatsApp da cliente ou no seu WhatsApp para envio manual (sem custos de API).</p>
 
-          <div className="space-y-4 pt-4 border-t border-gray-100">
-            <h3 className="font-bold text-gray-800">Templates de Mensagem</h3>
-            <p className="text-xs text-gray-500 mb-2">Variáveis permitidas: <code className="text-pink-600 font-bold">{'{cliente}'}</code>, <code className="text-pink-600 font-bold">{'{data}'}</code>, <code className="text-pink-600 font-bold">{'{horario}'}</code>, <code className="text-pink-600 font-bold">{'{procedimento}'}</code></p>
+          <div className="space-y-5 pt-6 border-t border-[#F3E8E8]">
+            <div>
+              <h3 className="font-bold text-[#3A3335]">Templates de Mensagem</h3>
+              <p className="text-xs text-[#8B7E7F] mt-1 font-medium">Variáveis permitidas: <code className="text-[#A76D74] bg-[#FFF5F5] px-1 py-0.5 rounded font-bold">{'{cliente}'}</code>, <code className="text-[#A76D74] bg-[#FFF5F5] px-1 py-0.5 rounded font-bold">{'{data}'}</code>, <code className="text-[#A76D74] bg-[#FFF5F5] px-1 py-0.5 rounded font-bold">{'{horario}'}</code>, <code className="text-[#A76D74] bg-[#FFF5F5] px-1 py-0.5 rounded font-bold">{'{procedimento}'}</code></p>
+            </div>
             
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <label className="text-sm font-bold text-gray-600">Nova solicitação (Enviado pela cliente p/ você)</label>
-                <button onClick={() => setSettings({...settings, msgNewRequest: defaultMsgs.newRequest})} className="text-xs text-blue-500 hover:underline flex items-center gap-1"><RotateCcw size={12}/> Restaurar padrão</button>
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide">Nova solicitação (Enviado pela cliente)</label>
+                <button onClick={() => setSettings({...settings, msgNewRequest: defaultMsgs.newRequest})} className="text-[10px] uppercase font-bold text-[#B98389] hover:text-[#A76D74] transition-colors flex items-center gap-1 bg-[#FFF5F5] px-2 py-1 rounded-md"><RotateCcw size={12}/> Restaurar</button>
               </div>
-              <textarea value={settings.msgNewRequest} onChange={e => setSettings({...settings, msgNewRequest: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-pink-500 outline-none text-gray-900 h-32" />
+              <textarea value={settings.msgNewRequest} onChange={e => setSettings({...settings, msgNewRequest: e.target.value})} className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-medium h-32 resize-none transition-all" />
             </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <label className="text-sm font-bold text-gray-600">Agendamento Confirmado (Enviado por você p/ cliente)</label>
-                <button onClick={() => setSettings({...settings, msgConfirmed: defaultMsgs.confirmed})} className="text-xs text-blue-500 hover:underline flex items-center gap-1"><RotateCcw size={12}/> Restaurar padrão</button>
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide">Confirmado (Enviado por você)</label>
+                <button onClick={() => setSettings({...settings, msgConfirmed: defaultMsgs.confirmed})} className="text-[10px] uppercase font-bold text-[#B98389] hover:text-[#A76D74] transition-colors flex items-center gap-1 bg-[#FFF5F5] px-2 py-1 rounded-md"><RotateCcw size={12}/> Restaurar</button>
               </div>
-              <textarea value={settings.msgConfirmed} onChange={e => setSettings({...settings, msgConfirmed: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-pink-500 outline-none text-gray-900 h-24" />
+              <textarea value={settings.msgConfirmed} onChange={e => setSettings({...settings, msgConfirmed: e.target.value})} className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-medium h-24 resize-none transition-all" />
             </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <label className="text-sm font-bold text-gray-600">Agendamento Recusado (Enviado por você p/ cliente)</label>
-                <button onClick={() => setSettings({...settings, msgRejected: defaultMsgs.rejected})} className="text-xs text-blue-500 hover:underline flex items-center gap-1"><RotateCcw size={12}/> Restaurar padrão</button>
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide">Recusado (Enviado por você)</label>
+                <button onClick={() => setSettings({...settings, msgRejected: defaultMsgs.rejected})} className="text-[10px] uppercase font-bold text-[#B98389] hover:text-[#A76D74] transition-colors flex items-center gap-1 bg-[#FFF5F5] px-2 py-1 rounded-md"><RotateCcw size={12}/> Restaurar</button>
               </div>
-              <textarea value={settings.msgRejected} onChange={e => setSettings({...settings, msgRejected: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-pink-500 outline-none text-gray-900 h-24" />
+              <textarea value={settings.msgRejected} onChange={e => setSettings({...settings, msgRejected: e.target.value})} className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-medium h-24 resize-none transition-all" />
             </div>
           </div>
         </div>
 
-        <button onClick={() => handleSave('WhatsApp')} disabled={saving} className="mt-6 w-full sm:w-auto px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors flex items-center justify-center gap-2">
-          <Save size={20} /> Salvar WhatsApp
+        <button onClick={() => handleSave('WhatsApp')} disabled={saving} className="mt-8 w-full sm:w-auto px-8 py-3.5 bg-[#5A7A66] text-white font-bold text-sm tracking-wide rounded-xl hover:bg-[#4A6454] transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-md shadow-[#5A7A66]/20">
+          <Save size={18} /> SALVAR WHATSAPP
         </button>
       </section>
 
       {/* REGRAS DE AGENDAMENTO */}
-      <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 overflow-hidden">
-        <div className="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
-          <div className="bg-purple-100 p-3 rounded-xl text-purple-600"><Clock size={24} /></div>
+      <section className="bg-white rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] p-6 overflow-hidden">
+        <div className="flex items-center gap-4 mb-6 border-b border-[#F3E8E8] pb-5">
+          <div className="bg-[#FFF9F2] p-3.5 rounded-2xl text-[#D4A373]"><Clock size={24} /></div>
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Regras de Agendamento</h2>
-            <p className="text-sm text-gray-500">Defina limites e comportamentos do calendário.</p>
+            <h2 className="text-xl font-bold text-[#3A3335]">Regras de Agendamento</h2>
+            <p className="text-sm text-[#8B7E7F] font-medium mt-0.5">Defina limites e comportamentos do calendário.</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div className="space-y-1">
-            <label className="text-sm font-bold text-gray-600">Antecedência Mínima (Minutos)</label>
-            <p className="text-xs text-gray-500 mb-2">Ex: 30 (Cliente não consegue marcar para agora mesmo)</p>
-            <input type="number" min="0" value={settings.minAdvanceMinutes} onChange={e => setSettings({...settings, minAdvanceMinutes: parseInt(e.target.value) || 0})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-pink-500 outline-none text-gray-900 font-bold" />
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide">Antecedência Mínima (Minutos)</label>
+            <p className="text-xs text-[#A99D9E] mb-2 font-medium">Ex: 30 (Impede de marcar em cima da hora)</p>
+            <input type="number" min="0" value={settings.minAdvanceMinutes} onChange={e => setSettings({...settings, minAdvanceMinutes: parseInt(e.target.value) || 0})} className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-bold transition-all" />
           </div>
           
-          <div className="space-y-1">
-            <label className="text-sm font-bold text-gray-600">Agendamento Máximo (Dias)</label>
-            <p className="text-xs text-gray-500 mb-2">Ex: 30 (A agenda só abre até o mês que vem)</p>
-            <input type="number" min="1" value={settings.maxDaysAhead} onChange={e => setSettings({...settings, maxDaysAhead: parseInt(e.target.value) || 30})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-pink-500 outline-none text-gray-900 font-bold" />
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide">Agendamento Máximo (Dias)</label>
+            <p className="text-xs text-[#A99D9E] mb-2 font-medium">Ex: 30 (Até quando a agenda fica aberta)</p>
+            <input type="number" min="1" value={settings.maxDaysAhead} onChange={e => setSettings({...settings, maxDaysAhead: parseInt(e.target.value) || 30})} className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-bold transition-all" />
           </div>
 
-          <div className="space-y-1 sm:col-span-2">
-            <label className="text-sm font-bold text-gray-600">Bloqueio de horários pendentes</label>
-            <p className="text-xs text-gray-500 mb-2">Se SIM, um agendamento pendente "segura" o horário impedindo que outras clientes marquem no mesmo momento.</p>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer bg-gray-50 p-3 rounded-xl border border-gray-200 flex-1">
-                <input type="radio" name="pendingBlock" checked={settings.pendingBlocksSlot} onChange={() => setSettings({...settings, pendingBlocksSlot: true})} className="w-5 h-5 text-pink-600" />
-                <span className="font-bold text-gray-800">SIM</span>
+          <div className="space-y-2.5 sm:col-span-2 mt-2">
+            <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide">Bloqueio de horários pendentes</label>
+            <p className="text-xs text-[#A99D9E] font-medium leading-relaxed">Se <span className="font-bold text-[#A76D74]">SIM</span>, um agendamento recém-solicitado "segura" o horário impedindo que outras clientes marquem no mesmo momento até você aprovar ou recusar.</p>
+            <div className="flex gap-4 pt-2">
+              <label className={`flex items-center justify-center gap-3 cursor-pointer p-4 rounded-2xl border transition-all flex-1 ${settings.pendingBlocksSlot ? 'border-[#B98389] bg-[#FFF5F5]' : 'border-[#F3E8E8] bg-[#FCFAFA]'}`}>
+                <input type="radio" name="pendingBlock" checked={settings.pendingBlocksSlot} onChange={() => setSettings({...settings, pendingBlocksSlot: true})} className="hidden" />
+                <span className={`font-bold text-sm tracking-wide ${settings.pendingBlocksSlot ? 'text-[#A76D74]' : 'text-[#8B7E7F]'}`}>SIM, BLOQUEAR</span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer bg-gray-50 p-3 rounded-xl border border-gray-200 flex-1">
-                <input type="radio" name="pendingBlock" checked={!settings.pendingBlocksSlot} onChange={() => setSettings({...settings, pendingBlocksSlot: false})} className="w-5 h-5 text-pink-600" />
-                <span className="font-bold text-gray-800">NÃO</span>
+              <label className={`flex items-center justify-center gap-3 cursor-pointer p-4 rounded-2xl border transition-all flex-1 ${!settings.pendingBlocksSlot ? 'border-[#B98389] bg-[#FFF5F5]' : 'border-[#F3E8E8] bg-[#FCFAFA]'}`}>
+                <input type="radio" name="pendingBlock" checked={!settings.pendingBlocksSlot} onChange={() => setSettings({...settings, pendingBlocksSlot: false})} className="hidden" />
+                <span className={`font-bold text-sm tracking-wide ${!settings.pendingBlocksSlot ? 'text-[#A76D74]' : 'text-[#8B7E7F]'}`}>NÃO BLOQUEAR</span>
               </label>
             </div>
           </div>
         </div>
 
-        <button onClick={() => handleSave('Regras')} disabled={saving} className="mt-6 w-full sm:w-auto px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors flex items-center justify-center gap-2">
-          <Save size={20} /> Salvar Regras
+        <button onClick={() => handleSave('Regras')} disabled={saving} className="mt-8 w-full sm:w-auto px-8 py-3.5 bg-[#5A7A66] text-white font-bold text-sm tracking-wide rounded-xl hover:bg-[#4A6454] transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-md shadow-[#5A7A66]/20">
+          <Save size={18} /> SALVAR REGRAS
         </button>
       </section>
     </div>
