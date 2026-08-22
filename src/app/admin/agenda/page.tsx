@@ -26,16 +26,16 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
         </h1>
         
         {/* Simples seletor de data - num app real seria um componente de DatePicker */}
-        <form>
+        <form className="flex gap-2">
           <input 
             type="date" 
             name="date"
             defaultValue={dateParam}
             className="p-2 border border-[#F3E8E8] rounded-xl text-sm outline-none focus:border-[#B98389] text-[#5A5052] bg-[#FCFAFA]"
-            onChange={(e) => {
-              e.target.form?.submit();
-            }}
           />
+          <button type="submit" className="bg-[#B98389] text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-[#A76D74] transition-colors">
+            Buscar
+          </button>
         </form>
       </div>
 
