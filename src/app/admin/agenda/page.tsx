@@ -5,9 +5,10 @@ import { CalendarIcon } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export default async function AgendaPage({ searchParams }: { searchParams: { date?: string } }) {
-  // Use searchParams in Next 15 with await if needed, but here it might be simpler to just fetch all upcoming or specific date
-  const dateParam = (await searchParams).date || format(new Date(), "yyyy-MM-dd");
+export default async function AgendaPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const resolvedParams = await searchParams;
+  const dateStr = typeof resolvedParams.date === 'string' ? resolvedParams.date : undefined;
+  const dateParam = dateStr || format(new Date(), "yyyy-MM-dd");
 
   const appointments = await prisma.appointment.findMany({
     where: { date: dateParam },
