@@ -49,7 +49,8 @@ export default function ServicesManager({ initialServices }: { initialServices: 
     if (res.ok) {
       setServices(prev => prev.filter(s => s.id !== id));
     } else {
-      alert("Erro ao excluir");
+      const data = await res.json();
+      alert(data.error || "Erro ao excluir");
     }
   };
 
@@ -155,19 +156,39 @@ export default function ServicesManager({ initialServices }: { initialServices: 
               <div className="flex justify-between items-start">
                 <div>
                   <h4 className="font-bold text-gray-900 text-lg">{service.name}</h4>
-                  <div className="flex gap-3 mt-1">
+                  <div className="flex gap-3 mt-1 items-center">
                     <span className="text-sm font-semibold text-pink-600 bg-pink-50 px-2 py-0.5 rounded">R$ {service.price.toFixed(2)}</span>
                     <span className="text-sm font-medium text-gray-600 bg-gray-100 px-2 py-0.5 rounded">{service.duration} mins</span>
+                    {!service.active && (
+                      <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded uppercase">Inativo</span>
+                    )}
                   </div>
                   {service.description && (
                     <p className="text-sm text-gray-500 mt-2">{service.description}</p>
                   )}
                 </div>
                 <div className="flex gap-2 ml-2 sm:ml-auto">
-                  <button onClick={() => handleEdit(service)} className="p-3 text-blue-500 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors flex-1 flex justify-center">
+                  <button 
+                    onClick={async () => {
+                      const res = await fetch(`/api/services/${service.id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ ...service, active: !service.active })
+                      });
+                      if (res.ok) {
+                        const updated = await res.json();
+                        setServices(prev => prev.map(s => s.id === service.id ? updated : s));
+                      }
+                    }} 
+                    className={`p-3 rounded-xl transition-colors flex-1 flex justify-center font-bold text-xs flex-col items-center gap-1 ${service.active ? 'text-yellow-600 bg-yellow-50 hover:bg-yellow-100' : 'text-green-600 bg-green-50 hover:bg-green-100'}`}
+                  >
+                    <Check size={20} className={!service.active ? "opacity-100" : "opacity-30"} />
+                    {service.active ? 'Desativar' : 'Ativar'}
+                  </button>
+                  <button onClick={() => handleEdit(service)} className="p-3 text-blue-500 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors flex justify-center flex-col items-center">
                     <Edit2 size={20} />
                   </button>
-                  <button onClick={() => handleDelete(service.id)} className="p-3 text-red-500 bg-red-50 rounded-xl hover:bg-red-100 transition-colors flex-1 flex justify-center">
+                  <button onClick={() => handleDelete(service.id)} className="p-3 text-red-500 bg-red-50 rounded-xl hover:bg-red-100 transition-colors flex justify-center flex-col items-center">
                     <Trash2 size={20} />
                   </button>
                 </div>

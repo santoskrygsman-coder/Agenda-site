@@ -16,6 +16,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Service not found" }, { status: 404 });
     }
 
+    if (!name || !phone || name.trim() === "" || phone.trim() === "") {
+      return NextResponse.json({ error: "Nome e WhatsApp são obrigatórios" }, { status: 400 });
+    }
+
     // Strict validation of time availability
     const { isTimeAvailable } = await import("@/lib/scheduling");
     const isAvailable = await isTimeAvailable(date, time, service.duration);
@@ -24,14 +28,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "O horário selecionado não está mais disponível ou entra em conflito com outro." }, { status: 400 });
     }
 
+    // Format phone (remove non-digits, ensure 55)
+    let cleanPhone = phone.replace(/\D/g, "");
+    if (cleanPhone.length >= 10 && !cleanPhone.startsWith("55")) {
+      cleanPhone = `55${cleanPhone}`;
+    }
+
     // Find or create Client
     let client = await prisma.client.findUnique({
-      where: { phone }
+      where: { phone: cleanPhone }
     });
 
     if (!client) {
       client = await prisma.client.create({
-        data: { name, phone }
+        data: { name, phone: cleanPhone }
       });
     }
 

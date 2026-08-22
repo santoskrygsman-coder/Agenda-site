@@ -30,7 +30,10 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
       where: { id: params.id }
     });
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === 'P2003') {
+      return NextResponse.json({ error: "Não é possível excluir um procedimento que possui agendamentos. Desative-o em vez disso." }, { status: 400 });
+    }
     return NextResponse.json({ error: "Erro ao deletar" }, { status: 500 });
   }
 }
