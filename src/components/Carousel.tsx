@@ -31,20 +31,34 @@ export default function Carousel({ images, autoPlayInterval = 5000 }: { images: 
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
-  // Check current media type
+    // Check current media type
   const currentMedia = images[currentIndex];
-  const isCurrentVideo = currentMedia?.type === "VIDEO";
+  const isNativeVideo = currentMedia?.type === "VIDEO";
+  const isInstagram = currentMedia?.type === "INSTAGRAM";
+  const isAnyVideo = isNativeVideo || isInstagram;
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
-  // Autoplay for images and IFRAMES only (native video handles itself via onEnded)
+  // Force play native videos when they become active
   useEffect(() => {
-    if (images.length <= 1 || isPaused || !isVisible || isCurrentVideo) return;
+    if (isNativeVideo) {
+      const vid = videoRefs.current[currentIndex];
+      if (vid) {
+        vid.currentTime = 0;
+        vid.play().catch(e => console.log("Autoplay blocked", e));
+      }
+    }
+  }, [currentIndex, isNativeVideo]);
+
+  // Autoplay for images only
+  useEffect(() => {
+    if (images.length <= 1 || isPaused || !isVisible || isAnyVideo) return;
     
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
     }, autoPlayInterval);
     
     return () => clearInterval(timer);
-  }, [images.length, isPaused, isVisible, isCurrentVideo, autoPlayInterval, currentIndex]);
+  }, [images.length, isPaused, isVisible, isAnyVideo, autoPlayInterval, currentIndex]);
 
   const next = (e?: React.MouseEvent | React.TouchEvent) => {
     if (e) e.stopPropagation();
@@ -114,17 +128,19 @@ export default function Carousel({ images, autoPlayInterval = 5000 }: { images: 
           return (
             <div key={img.id || i} className="w-full h-full shrink-0 relative flex justify-center bg-black/5">
               {img.type === "INSTAGRAM" ? (
+                // Force autoplay for instagram embeds if possible
                 <iframe 
-                  src={img.url} 
+                  src={img.url + (img.url.includes('?') ? '&' : '?') + 'autoplay=1&mute=1'} 
                   className="w-full h-full max-w-[400px] border-none"
                   frameBorder="0" 
                   scrolling="no" 
                   allowTransparency={true} 
-                  allow="encrypted-media"
+                  allow="encrypted-media; autoplay"
                 ></iframe>
               ) : img.type === "VIDEO" ? (
                 isNear ? (
                   <video
+                    ref={el => { videoRefs.current[i] = el; }}
                     src={img.url}
                     className="w-full h-full object-cover"
                     autoPlay={currentIndex === i}
