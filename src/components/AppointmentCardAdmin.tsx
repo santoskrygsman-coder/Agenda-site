@@ -97,6 +97,28 @@ export default function AppointmentCardAdmin({ appointment, settings }: { appoin
     return "#";
   };
 
+  const getReminderWhatsAppLink = () => {
+    const { client, service, startTime } = appointment;
+    // Assuming msgReminder1 is the default for now, could be dynamic based on hours
+    const template = settings?.msgReminder1 || "Olá, {cliente}! 💕\n\nPassando para lembrar do seu atendimento:\n\n✨ Procedimento: {procedimento}\n📅 Data: {data}\n⏰ Horário: {horario}\n\nEstamos te esperando! 💗";
+    const professionalName = settings?.professionalName || "a profissional";
+    
+    const msg = WhatsAppService.getReminderMessage(template, client.name, service.name, dateFormatted, startTime, service.price, professionalName);
+    return WhatsAppService.generateWhatsAppLink(client.phone, msg);
+  };
+
+  const handleReminderClick = async () => {
+    // Marcar como lembrete enviado
+    try {
+      await fetch(`/api/appointments/${appointment.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reminder1SentAt: new Date().toISOString() })
+      });
+      router.refresh();
+    } catch (e) {}
+  };
+
   const statusLabel = status === "PENDING" ? "Aguardando confirmação" : 
                       status === "CONFIRMED" ? "Confirmado" : 
                       status === "CANCELLED" ? "Cancelado" : 
@@ -126,6 +148,11 @@ export default function AppointmentCardAdmin({ appointment, settings }: { appoin
           <div className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${statusColor}`}>
             {statusLabel}
           </div>
+          {(status === "CONFIRMED" || status === "PENDING") && (
+            <span className={`px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 ${appointment.reminder1SentAt ? 'bg-[#F0F7F4] text-[#5A7A66]' : 'bg-[#FFF5F5] text-[#A76D74]'}`}>
+              {appointment.reminder1SentAt ? '✓ LEMBRETE PREPARADO' : '🔔 LEMBRETE PENDENTE'}
+            </span>
+          )}
           {hasPendingDeposit && status === "PENDING" && (
             <span className="text-[10px] font-bold text-[#D4A373] bg-[#FFF9F2] px-2 py-0.5 rounded-md flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-[#D4A373] animate-pulse"></span> Sinal
@@ -239,15 +266,30 @@ export default function AppointmentCardAdmin({ appointment, settings }: { appoin
                       </div>
                     )}
 
-                    <a 
-                      href={getWhatsAppLink()} 
-                      target="_blank" 
-                      rel="noreferrer"
-                      onClick={handleWhatsAppClick}
-                      className="w-full mt-2 py-3.5 bg-[#25D366] text-white font-bold text-sm rounded-xl flex justify-center items-center gap-2 active:scale-[0.98] transition-transform shadow-md shadow-[#25D366]/20"
-                    >
-                      <MessageCircle size={18} /> WhatsApp
-                    </a>
+                    {/* BOTÕES WHATSAPP */}
+                    <div className="flex gap-2 mt-2">
+                      <a 
+                        href={getWhatsAppLink()} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        onClick={handleWhatsAppClick}
+                        className="flex-1 py-3.5 bg-white border border-[#25D366] text-[#25D366] font-bold text-sm rounded-xl flex justify-center items-center gap-1.5 active:scale-[0.98] transition-transform"
+                      >
+                        <MessageCircle size={16} /> Contato
+                      </a>
+                      
+                      {(status === "CONFIRMED" || status === "PENDING") && (
+                        <a 
+                          href={getReminderWhatsAppLink()} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          onClick={handleReminderClick}
+                          className="flex-[2] py-3.5 bg-[#25D366] text-white font-bold text-sm rounded-xl flex justify-center items-center gap-1.5 active:scale-[0.98] transition-transform shadow-md shadow-[#25D366]/20"
+                        >
+                          <MessageCircle size={16} /> AVISAR CLIENTE
+                        </a>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

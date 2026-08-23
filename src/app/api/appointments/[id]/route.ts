@@ -23,6 +23,9 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
         dataToUpdate.whatsappOpenedAt = new Date();
       }
     }
+    if (body.reminder1SentAt !== undefined) {
+      dataToUpdate.reminder1SentAt = body.reminder1SentAt;
+    }
 
     const appointment = await prisma.appointment.update({
       where: { id },

@@ -77,20 +77,23 @@ export default function GalleryManager() {
 
   const handleAddInstagram = async () => {
     if (images.length >= 50) return alert("Você atingiu o limite da galeria.");
-    const url = prompt("Cole o link do Reels do Instagram ou TikTok:");
+    const url = prompt("Cole o link direto do vídeo (.mp4) ou link do Reels do Instagram/TikTok:");
     if (!url) return;
     
     // Convert short link / reel format to embed if possible
     let finalUrl = url;
-    if (url.includes("instagram.com")) {
+    let type = "INSTAGRAM";
+
+    if (url.trim().toLowerCase().endsWith(".mp4")) {
+      finalUrl = url;
+      type = "VIDEO";
+    } else if (url.includes("instagram.com")) {
       const urlObj = new URL(url);
       urlObj.search = ""; // remove query params
       finalUrl = urlObj.toString();
       if (!finalUrl.endsWith("/")) finalUrl += "/";
       finalUrl += "embed";
     } else if (url.includes("tiktok.com")) {
-      // Basic TikTok embed format is different, but for now we'll just save it, and let the Carousel handle it or just use a generic iframe. We'll do our best.
-      // Easiest is to save the raw URL and parse in the frontend.
       finalUrl = url;
     }
 
@@ -98,7 +101,7 @@ export default function GalleryManager() {
     const res = await fetch('/api/gallery', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: finalUrl, type: "INSTAGRAM", order: images.length })
+      body: JSON.stringify({ url: finalUrl, type: type, order: images.length })
     });
     
     if (res.ok) {
@@ -215,9 +218,9 @@ export default function GalleryManager() {
                 </div>
                 
                 <div className="w-20 h-20 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-[#F3E8E8] relative flex items-center justify-center">
-                  {img.type === "INSTAGRAM" ? (
+                  {img.type === "INSTAGRAM" || img.type === "VIDEO" ? (
                     <div className="w-full h-full flex flex-col items-center justify-center bg-[#FFF5F5] text-[#A76D74] p-1 text-center">
-                      <span className="text-[10px] font-bold">VÍDEO LINK</span>
+                      <span className="text-[10px] font-bold">VÍDEO</span>
                     </div>
                   ) : (
                     <img src={img.url} className="w-full h-full object-cover" alt="Galeria" />

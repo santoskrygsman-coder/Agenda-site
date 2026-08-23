@@ -3,13 +3,17 @@
 import { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-export default function Carousel({ images, autoPlayInterval = 4000 }: { images: any[], autoPlayInterval?: number }) {
+export default function Carousel({ images, autoPlayInterval = 5000 }: { images: any[], autoPlayInterval?: number }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Pause on intersection observer (if out of view)
+  // Touch state
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  
+  // Pause on intersection observer
   useEffect(() => {
     if (!containerRef.current) return;
     const observer = new IntersectionObserver(
@@ -20,23 +24,27 @@ export default function Carousel({ images, autoPlayInterval = 4000 }: { images: 
     return () => observer.disconnect();
   }, []);
 
-  // Pause on visibility API (background tab)
+  // Pause on visibility API
   useEffect(() => {
     const handleVisibilityChange = () => setIsVisible(!document.hidden);
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
-  // Autoplay
+  // Check current media type
+  const currentMedia = images[currentIndex];
+  const isCurrentVideo = currentMedia?.type === "VIDEO";
+
+  // Autoplay for images and IFRAMES only (native video handles itself via onEnded)
   useEffect(() => {
-    if (images.length <= 1 || isPaused || !isVisible) return;
+    if (images.length <= 1 || isPaused || !isVisible || isCurrentVideo) return;
     
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
     }, autoPlayInterval);
     
     return () => clearInterval(timer);
-  }, [images.length, isPaused, isVisible, autoPlayInterval]);
+  }, [images.length, isPaused, isVisible, isCurrentVideo, autoPlayInterval, currentIndex]);
 
   const next = (e?: React.MouseEvent | React.TouchEvent) => {
     if (e) e.stopPropagation();
@@ -53,63 +61,112 @@ export default function Carousel({ images, autoPlayInterval = 4000 }: { images: 
     setCurrentIndex(index);
   };
 
+  // Swipe Handlers
+  const onTouchStart = (e: React.TouchEvent) => {
+    setIsPaused(true);
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEndHandler = () => {
+    if (!touchStart || !touchEnd) {
+      setTimeout(() => setIsPaused(false), 2000);
+      return;
+    }
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe) {
+      next();
+    } else if (isRightSwipe) {
+      prev();
+    }
+    
+    setTimeout(() => setIsPaused(false), 2000);
+  };
+
   if (!images || images.length === 0) return null;
 
   return (
     <div 
       ref={containerRef}
-      className="relative w-full overflow-hidden rounded-2xl group mb-4 shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
+      className="relative w-full overflow-hidden rounded-2xl group mb-4 shadow-[0_4px_20px_rgba(0,0,0,0.04)] bg-black/5"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      onTouchStart={() => setIsPaused(true)}
-      onTouchEnd={() => {
-        setTimeout(() => setIsPaused(false), 2000);
-      }}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEndHandler}
     >
       <div 
         className="flex transition-transform duration-700 ease-in-out h-[400px] sm:h-[450px]"
         style={{ transform: `translateX(-${currentIndex * 100}%)` }}
       >
-        {images.map((img, i) => (
-          <div key={img.id || i} className="w-full h-full shrink-0 relative flex justify-center bg-black/5">
-            {img.type === "INSTAGRAM" ? (
-              <iframe 
-                src={img.url} 
-                className="w-full h-full max-w-[400px] border-none"
-                frameBorder="0" 
-                scrolling="no" 
-                allowTransparency={true} 
-                allow="encrypted-media"
-              ></iframe>
-            ) : (
-              <img 
-                src={img.url}
-                alt={`Galeria ${i + 1}`}
-                className="w-full h-full object-cover pointer-events-none"
-                loading={i === 0 ? "eager" : "lazy"}
-              />
-            )}
-          </div>
-        ))}
+        {images.map((img, i) => {
+          // Optimization: Only render video tags if they are current, previous, or next
+          const isNear = Math.abs(currentIndex - i) <= 1 || (currentIndex === 0 && i === images.length - 1) || (currentIndex === images.length - 1 && i === 0);
+          
+          return (
+            <div key={img.id || i} className="w-full h-full shrink-0 relative flex justify-center bg-black/5">
+              {img.type === "INSTAGRAM" ? (
+                <iframe 
+                  src={img.url} 
+                  className="w-full h-full max-w-[400px] border-none"
+                  frameBorder="0" 
+                  scrolling="no" 
+                  allowTransparency={true} 
+                  allow="encrypted-media"
+                ></iframe>
+              ) : img.type === "VIDEO" ? (
+                isNear ? (
+                  <video
+                    src={img.url}
+                    className="w-full h-full object-cover"
+                    autoPlay={currentIndex === i}
+                    muted
+                    playsInline
+                    loop={false}
+                    onEnded={() => next()}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-black/10"></div>
+                )
+              ) : (
+                <img 
+                  src={img.url}
+                  alt={`Galeria ${i + 1}`}
+                  className="w-full h-full object-cover pointer-events-none select-none"
+                  loading={i === 0 ? "eager" : "lazy"}
+                  draggable={false}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
       
       {images.length > 1 && (
         <>
           <button 
             onClick={prev}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-white/70 text-[#3A3335] opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white shadow-md"
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-white/70 text-[#3A3335] opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white shadow-md z-20"
           >
             <ChevronLeft size={16} />
           </button>
           
           <button 
             onClick={next}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-white/70 text-[#3A3335] opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white shadow-md"
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-white/70 text-[#3A3335] opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white shadow-md z-20"
           >
             <ChevronRight size={16} />
           </button>
 
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
             {images.map((_, i) => (
               <button 
                 key={i} 

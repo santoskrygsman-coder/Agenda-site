@@ -41,11 +41,16 @@ export default async function ClientesPage() {
                     {totalAppts} agendamento{totalAppts !== 1 && 's'}
                   </span>
                 </div>
-                
-                <p className="text-[#8B7E7F] text-sm flex items-center gap-1.5 font-medium">
-                  <Phone size={14} className="text-[#D4A373]" /> {client.phone}
-                </p>
-
+                <div className="flex flex-col gap-1 mt-1">
+                  <p className="text-[#8B7E7F] text-sm flex items-center gap-1.5 font-medium">
+                    <Phone size={14} className="text-[#D4A373]" /> {client.phone}
+                  </p>
+                  {client.birthDate && (
+                    <p className="text-[#8B7E7F] text-sm flex items-center gap-1.5 font-medium">
+                      <span className="text-[#D4A373]">🎂</span> {client.birthDate}
+                    </p>
+                  )}
+                </div>
                 {lastAppt && (
                   <div className="mt-3 text-xs bg-[#FCFAFA] border border-[#F3E8E8] p-3 rounded-xl text-[#5A5052] flex items-center gap-2 font-medium">
                     <Calendar size={14} className="text-[#B98389]" />

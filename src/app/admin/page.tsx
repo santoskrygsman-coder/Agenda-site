@@ -130,55 +130,67 @@ export default async function AdminDashboard() {
         )}
       </section>
 
-      {/* AVISOS */}
-      {(birthdayClients.length > 0 || pendingDeposits.length > 0 || tomorrowAppointments.length > 0) && (
-        <section>
-          <h2 className="text-sm font-bold text-[#3A3335] uppercase tracking-widest flex items-center gap-2 mb-4">
-            <Gift size={16} className="text-[#D4A373]" /> Avisos
-          </h2>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {birthdayClients.map(c => (
-              <div key={c.id} className="bg-white border border-[#F3E8E8] p-4 rounded-2xl flex justify-between items-center shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="bg-[#FFF9F2] p-2.5 rounded-xl text-[#D4A373]"><Gift size={20} /></div>
-                  <div>
-                    <p className="text-sm font-bold text-[#3A3335]">{c.name}</p>
-                    <p className="text-[11px] text-[#8B7E7F] font-bold uppercase tracking-wider mt-0.5">Aniversário {c.birthDate?.substring(0, 5) === format(todayDate, "dd/MM") ? "HOJE" : `dia ${c.birthDate?.substring(0, 5)}`}</p>
-                  </div>
-                </div>
-                {settings?.birthdayBenefitActive && settings?.whatsappSystemNumber && (
-                  <a href={WhatsAppService.generateWhatsAppLink(c.phone, WhatsAppService.getBirthdayMessage(settings.msgBirthday, c.name, settings.birthdayBenefitValue || "nosso mimo"))} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366]/10 text-[#1ebd5a] font-bold text-[10px] uppercase tracking-wider rounded-lg hover:bg-[#25D366]/20 transition-colors">
-                    Avisar
-                  </a>
-                )}
-              </div>
-            ))}
-
-            {pendingDeposits.length > 0 && (
-              <div className="bg-white border border-[#F3E8E8] p-4 rounded-2xl flex items-center gap-3 shadow-sm">
-                <div className="bg-[#FFF5F5] p-2.5 rounded-xl text-[#A76D74]"><CreditCard size={20} /></div>
+      {/* 🔔 LEMBRETES */}
+      <section>
+        <h2 className="text-sm font-bold text-[#3A3335] uppercase tracking-widest flex items-center gap-2 mb-4">
+          <Bell size={16} className="text-[#A76D74]" /> Lembretes
+        </h2>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {tomorrowAppointments.length > 0 ? (
+            <div className="bg-white border border-[#F3E8E8] p-4 rounded-2xl flex justify-between items-center shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="bg-[#FFF5F5] p-2.5 rounded-xl text-[#A76D74]"><Bell size={20} /></div>
                 <div>
-                  <p className="text-sm font-bold text-[#3A3335]">{pendingDeposits.length} {pendingDeposits.length === 1 ? 'sinal pendente' : 'sinais pendentes'}</p>
-                  <p className="text-[11px] text-[#8B7E7F] font-bold uppercase tracking-wider mt-0.5">Verifique as solicitações no topo</p>
+                  <p className="text-sm font-bold text-[#3A3335]">{tomorrowAppointments.length} clientes para avisar amanhã</p>
+                  <p className="text-[11px] text-[#8B7E7F] font-bold uppercase tracking-wider mt-0.5">Notifique sobre os agendamentos</p>
                 </div>
               </div>
-            )}
-            
-            {tomorrowAppointments.length > 0 && (
-              <div className="bg-white border border-[#F3E8E8] p-4 rounded-2xl flex justify-between items-center shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="bg-[#E9F0EC] p-2.5 rounded-xl text-[#5A7A66]"><Clock size={20} /></div>
-                  <div>
-                    <p className="text-sm font-bold text-[#3A3335]">{tomorrowAppointments.length} para amanhã</p>
-                    <p className="text-[11px] text-[#8B7E7F] font-bold uppercase tracking-wider mt-0.5">Lembretes para enviar</p>
-                  </div>
-                </div>
-                <Link href="/admin/agenda" className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F3E8E8] text-[#8B7E7F] font-bold text-[10px] uppercase tracking-wider rounded-lg hover:bg-[#e4d5d5] transition-colors">
-                  Ver
-                </Link>
+              <Link href="/admin/agenda" className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F3E8E8] text-[#8B7E7F] font-bold text-[10px] uppercase tracking-wider rounded-lg hover:bg-[#e4d5d5] transition-colors">
+                VER CLIENTES
+              </Link>
+            </div>
+          ) : (
+            <div className="bg-white border border-[#F3E8E8] p-4 rounded-2xl flex items-center gap-3 shadow-sm">
+              <div className="bg-[#F0F7F4] p-2.5 rounded-xl text-[#5A7A66]"><Bell size={20} /></div>
+              <div>
+                <p className="text-sm font-bold text-[#3A3335]">Nenhum lembrete pendente</p>
+                <p className="text-[11px] text-[#8B7E7F] font-bold uppercase tracking-wider mt-0.5">Tudo em dia!</p>
               </div>
-            )}
+            </div>
+          )}
+          
+          {birthdayClients.map(c => (
+            <div key={c.id} className="bg-white border border-[#F3E8E8] p-4 rounded-2xl flex justify-between items-center shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="bg-[#FFF9F2] p-2.5 rounded-xl text-[#D4A373]"><Gift size={20} /></div>
+                <div>
+                  <p className="text-sm font-bold text-[#3A3335]">{c.name}</p>
+                  <p className="text-[11px] text-[#8B7E7F] font-bold uppercase tracking-wider mt-0.5">Aniversário {c.birthDate?.substring(0, 5) === format(todayDate, "dd/MM") ? "HOJE" : `dia ${c.birthDate?.substring(0, 5)}`}</p>
+                </div>
+              </div>
+              {settings?.birthdayBenefitActive && settings?.whatsappSystemNumber && (
+                <a href={WhatsAppService.generateWhatsAppLink(c.phone, WhatsAppService.getBirthdayMessage(settings.msgBirthday, c.name, settings.birthdayBenefitValue || "nosso mimo"))} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366]/10 text-[#1ebd5a] font-bold text-[10px] uppercase tracking-wider rounded-lg hover:bg-[#25D366]/20 transition-colors">
+                  Avisar
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* PRÓXIMOS ATENDIMENTOS */}
+      {nextAppointments.length > 0 && (
+        <section>
+          <div className="flex justify-between items-end mb-4">
+            <h2 className="text-sm font-bold text-[#3A3335] uppercase tracking-widest flex items-center gap-2">
+              <CalendarIcon size={16} className="text-[#5A7A66]" /> Próximos Atendimentos
+            </h2>
+          </div>
+          <div className="space-y-4">
+            {nextAppointments.map(appt => (
+              <AppointmentCardAdmin key={appt.id} appointment={appt} settings={settings} />
+            ))}
           </div>
         </section>
       )}

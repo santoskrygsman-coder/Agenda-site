@@ -49,14 +49,16 @@ export class WhatsAppService {
     return `Olá, ${firstName}. 💕\n\nSeu agendamento para ${serviceName} no dia ${date} às ${time} precisou ser cancelado.\n\nQualquer dúvida, estamos à disposição. 💗`;
   }
 
-  static getReminderMessage(template: string, clientName: string, serviceName: string, date: string, time: string, price: number): string {
+  static getReminderMessage(template: string, clientName: string, serviceName: string, date: string, time: string, price: number, professionalName: string = "a profissional"): string {
     const firstName = clientName.split(" ")[0] || clientName;
     return template
-      .replace(/{cliente}/g, firstName)
-      .replace(/{procedimento}/g, serviceName)
-      .replace(/{data}/g, date)
-      .replace(/{horario}/g, time)
-      .replace(/{valor}/g, `R$ ${price.toFixed(2).replace('.', ',')}`);
+      .replace(/{cliente}/gi, firstName)
+      .replace(/{nome_cliente}/gi, firstName)
+      .replace(/{procedimento}/gi, serviceName)
+      .replace(/{data}/gi, date)
+      .replace(/{horario}/gi, time)
+      .replace(/{nome_profissional}/gi, professionalName)
+      .replace(/{valor}/gi, `R$ ${price.toFixed(2).replace('.', ',')}`);
   }
 
   static getBirthdayMessage(template: string, clientName: string, benefit: string): string {
