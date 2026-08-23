@@ -17,15 +17,16 @@ export async function POST(request: Request) {
     const data = await request.json();
     const count = await prisma.galleryImage.count();
     
-    if (count >= 6) {
-      return NextResponse.json({ error: "Maximum limit of 6 images reached" }, { status: 400 });
+    if (count >= 50) {
+      return NextResponse.json({ error: "Maximum limit of 50 images reached" }, { status: 400 });
     }
 
     const newImage = await prisma.galleryImage.create({
       data: {
         url: data.url,
+        type: data.type || "IMAGE",
         order: data.order ?? count,
-        isFeature: count === 0 ? true : false // Se for a primeira, já vira destaque
+        isFeature: count === 0 ? true : false
       }
     });
 

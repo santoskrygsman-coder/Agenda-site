@@ -23,37 +23,46 @@ model Client {
   name      String
   phone     String   @unique
   notes     String?
+  birthDate String?  // Novo: Formato DD/MM ou YYYY-MM-DD
   createdAt DateTime @default(now())
   appointments Appointment[]
 }
 
 model Service {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  price       Float
-  duration    Int      // Minutos
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  appointments Appointment[]
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  price           Float
+  duration        Int      // Minutos
+  active          Boolean  @default(true)
+  requiresDeposit Boolean  @default(false) // Novo: Exigir sinal
+  createdAt       DateTime @default(now())
+  appointments    Appointment[]
+  galleryImages   GalleryImage[] // Relacionamento com imagens
 }
 
 model Appointment {
-  id         String   @id @default(cuid())
-  clientId   String
-  serviceId  String
-  date       String   // Formato YYYY-MM-DD para facilitar buscas
-  startTime  String   // Formato HH:MM
-  endTime    String   // Formato HH:MM
-  status     String   @default("PENDING") // PENDING, CONFIRMED, REJECTED, CANCELED
-  notes      String?
-  whatsappStatus String @default("NOT_SENT") // NOT_SENT, OPENED, SENT_MANUALLY
+  id             String   @id @default(cuid())
+  clientId       String
+  serviceId      String
+  date           String   // Formato YYYY-MM-DD para facilitar buscas
+  startTime      String   // Formato HH:MM
+  endTime        String   // Formato HH:MM
+  status         String   @default("PENDING") // PENDING, CONFIRMED, REJECTED, CANCELLED, COMPLETED
+  notes          String?
+  paymentStatus  String   @default("PENDING") // Novo: PENDING, PAID_MANUALLY (usado para o sinal)
+  
+  whatsappStatus String   @default("NOT_SENT") // NOT_SENT, OPENED, SENT_MANUALLY
   whatsappOpenedAt DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  
+  reminder1SentAt DateTime? // Novo: Controle de lembretes
+  reminder2SentAt DateTime?
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  client     Client   @relation(fields: [clientId], references: [id])
-  service    Service  @relation(fields: [serviceId], references: [id])
+  client         Client   @relation(fields: [clientId], references: [id])
+  service        Service  @relation(fields: [serviceId], references: [id])
 }
 
 model WorkingHours {
@@ -89,6 +98,18 @@ model Settings {
   msgConfirmed       String   @default("✅ Agendamento Confirmado!\n\nOlá {cliente}, seu horário para {procedimento} no dia {data} às {horario} está confirmado.")
   msgRejected        String   @default("❌ Agendamento Não Confirmado\n\nOlá {cliente}, infelizmente não poderemos atender sua solicitação para o dia {data} às {horario}.")
   
+  // Novos campos de Aniversário
+  birthdayBenefitActive Boolean @default(false)
+  birthdayBenefitType   String?
+  birthdayBenefitValue  String?
+  msgBirthday           String  @default("Olá, {cliente}! 💕\nPassando para desejar um feliz aniversário! 🎂✨\n\nDesejamos que seu dia seja maravilhoso!\n\nPreparamos um carinho especial para você:\n{beneficio}\n\nEsperamos você em breve! 💗")
+
+  // Novos campos de Lembretes
+  reminder1DaysBefore   Int     @default(1)
+  reminder2HoursBefore  Int     @default(2)
+  msgReminder1          String  @default("Olá, {cliente}! 💕\n\nPassando para lembrar do seu atendimento:\n\n✨ Procedimento: {procedimento}\n📅 Data: {data}\n⏰ Horário: {horario}\n\nEstamos te esperando! 💗")
+  msgReminder2          String  @default("Bom dia, {cliente}! ✨\n\nSeu atendimento está marcado para hoje:\n\n✨ {procedimento}\n⏰ {horario}\n\nAté logo! 💕")
+  
   minAdvanceMinutes  Int      @default(30)
   maxDaysAhead       Int      @default(30)
   pendingBlocksSlot  Boolean  @default(true)
@@ -99,7 +120,12 @@ model Settings {
 model GalleryImage {
   id        String   @id @default(cuid())
   url       String   // Base64 string da imagem
+  type      String   @default("IMAGE") // "IMAGE" ou "INSTAGRAM"
   order     Int      @default(0)
   isFeature Boolean  @default(false)
   createdAt DateTime @default(now())
+  
+  // Novo: Associação com procedimento específico
+  serviceId String?
+  service   Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
 }

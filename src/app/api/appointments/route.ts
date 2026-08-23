@@ -5,7 +5,7 @@ import { parse, addMinutes, format } from "date-fns";
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-    const { serviceId, date, time, name, phone, notes } = data;
+    const { serviceId, date, time, name, phone, notes, birthDate } = data;
 
     // Fetch Service
     const service = await prisma.service.findUnique({
@@ -41,7 +41,12 @@ export async function POST(request: Request) {
 
     if (!client) {
       client = await prisma.client.create({
-        data: { name, phone: cleanPhone }
+        data: { name, phone: cleanPhone, birthDate: birthDate || null }
+      });
+    } else if (birthDate && !client.birthDate) {
+      client = await prisma.client.update({
+        where: { id: client.id },
+        data: { birthDate }
       });
     }
 

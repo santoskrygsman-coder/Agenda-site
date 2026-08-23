@@ -13,6 +13,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
         description: body.description,
         price: parseFloat(body.price),
         duration: parseInt(body.duration),
+        requiresDeposit: body.requiresDeposit,
         active: body.active
       }
     });

@@ -1,21 +1,13 @@
 export class WhatsAppService {
-  /**
-   * Formata um número de telefone para o padrão WhatsApp: apenas números,
-   * garantindo o prefixo do país (55 para Brasil se não especificado).
-   */
   static formatPhone(phone: string): string {
     const cleaned = phone.replace(/\D/g, "");
     if (!cleaned) return "";
-    // Se começar com DDD local (10 ou 11 dígitos) adiciona 55
     if (cleaned.length === 10 || cleaned.length === 11) {
       return `55${cleaned}`;
     }
     return cleaned;
   }
 
-  /**
-   * Gera o link do WhatsApp (wa.me) para envio manual via browser/app.
-   */
   static generateWhatsAppLink(phone: string, message: string): string {
     const formattedPhone = this.formatPhone(phone);
     if (!formattedPhone) return "#";
@@ -23,48 +15,54 @@ export class WhatsAppService {
     return `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
   }
 
-  /**
-   * Mensagem gerada para a CLIENTE enviar para a DESIGNER após fazer o pedido de agendamento.
-   */
   static getNewRequestMessage(
     clientName: string,
     serviceName: string,
     date: string,
     time: string,
     price: number,
+    requiresDeposit: boolean,
     notes?: string
   ): string {
     const obsText = notes ? `\n📝 Observação:\n${notes}\n` : "";
-    return `✨ NOVA SOLICITAÇÃO DE AGENDAMENTO\n\nOlá! Gostaria de solicitar um agendamento. 💕\n\n👤 Cliente: ${clientName}\n✨ Procedimento: ${serviceName}\n📅 Data: ${date}\n⏰ Horário: ${time}\n💰 Valor: R$ ${price.toFixed(2).replace('.', ',')}\n${obsText}\nGostaria de confirmar a disponibilidade desse horário. 💗`;
+    const priceFormatted = price.toFixed(2).replace('.', ',');
+    
+    if (requiresDeposit) {
+      return `💕 Olá! Tudo bem?\n\nMeu nome é ${clientName} e gostaria de solicitar um agendamento.\n\n✨ Procedimento: ${serviceName}\n📅 Data: ${date}\n⏰ Horário: ${time}\n💰 Valor: R$ ${priceFormatted}\n${obsText}\n🟡 STATUS: AGUARDANDO CONFIRMAÇÃO DO AGENDAMENTO\n\n💳 Vi que este procedimento necessita de um sinal para confirmação do horário.\n\nGostaria de saber quais são as formas de pagamento disponíveis para realizar o sinal.\n\nPoderia verificar a disponibilidade e me orientar sobre o sinal para confirmar meu horário? 💗\n\nAguardo sua confirmação! 😊`;
+    } else {
+      return `💕 Olá! Tudo bem?\n\nMeu nome é ${clientName} e gostaria de solicitar um agendamento.\n\n✨ Procedimento: ${serviceName}\n📅 Data: ${date}\n⏰ Horário: ${time}\n💰 Valor: R$ ${priceFormatted}\n${obsText}\n🟡 STATUS: AGUARDANDO CONFIRMAÇÃO DO AGENDAMENTO\n\nGostaria de confirmar se esse horário está disponível.\n\nAguardo sua confirmação. 💗\n\nObrigada! 😊`;
+    }
   }
 
-  /**
-   * Mensagem gerada para a DESIGNER enviar para a CLIENTE após CONFIRMAR o agendamento.
-   */
-  static getConfirmedMessage(
-    clientName: string,
-    serviceName: string,
-    date: string,
-    time: string,
-    price: number
-  ): string {
+  static getConfirmedMessage(clientName: string, serviceName: string, date: string, time: string, price: number): string {
     const firstName = clientName.split(" ")[0] || clientName;
     return `✨ AGENDAMENTO CONFIRMADO!\n\nOlá, ${firstName}! 💕\n\nSeu horário foi confirmado:\n\n✨ Procedimento: ${serviceName}\n📅 Data: ${date}\n⏰ Horário: ${time}\n💰 Valor: R$ ${price.toFixed(2).replace('.', ',')}\n\nTe esperamos! 💗`;
   }
 
-  /**
-   * Mensagem gerada para a DESIGNER enviar para a CLIENTE após RECUSAR o agendamento.
-   */
   static getRejectedMessage(clientName: string, serviceName: string, date: string, time: string): string {
     const firstName = clientName.split(" ")[0] || clientName;
     return `Olá, ${firstName}! 💕\n\nInfelizmente não conseguimos confirmar o horário solicitado:\n\n✨ Procedimento: ${serviceName}\n📅 Data: ${date}\n⏰ Horário: ${time}\n\nEntre em contato conosco pelo WhatsApp para escolher outro horário. 💗`;
   }
 
-  /**
-   * Mensagem gerada para a DESIGNER enviar para a CLIENTE após CANCELAR um agendamento já confirmado.
-   */
   static getCancelledMessage(clientName: string, serviceName: string, date: string, time: string): string {
     const firstName = clientName.split(" ")[0] || clientName;
     return `Olá, ${firstName}. 💕\n\nSeu agendamento para ${serviceName} no dia ${date} às ${time} precisou ser cancelado.\n\nQualquer dúvida, estamos à disposição. 💗`;
+  }
+
+  static getReminderMessage(template: string, clientName: string, serviceName: string, date: string, time: string, price: number): string {
+    const firstName = clientName.split(" ")[0] || clientName;
+    return template
+      .replace(/{cliente}/g, firstName)
+      .replace(/{procedimento}/g, serviceName)
+      .replace(/{data}/g, date)
+      .replace(/{horario}/g, time)
+      .replace(/{valor}/g, `R$ ${price.toFixed(2).replace('.', ',')}`);
+  }
+
+  static getBirthdayMessage(template: string, clientName: string, benefit: string): string {
+    const firstName = clientName.split(" ")[0] || clientName;
+    return template
+      .replace(/{cliente}/g, firstName)
+      .replace(/{beneficio}/g, benefit);
   }
 }

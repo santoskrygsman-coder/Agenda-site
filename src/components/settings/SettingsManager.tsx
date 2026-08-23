@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Save, User, MessageCircle, Clock, Smartphone, RotateCcw } from "lucide-react";
 
-export default function SettingsManager() {
+export default function SettingsManager({ activeSection }: { activeSection?: 'perfil' | 'whatsapp' | 'agenda' | 'aniversarios' | 'lembretes' }) {
   const [settings, setSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -54,6 +54,7 @@ export default function SettingsManager() {
       )}
 
       {/* PERFIL PROFISSIONAL */}
+      {(!activeSection || activeSection === 'perfil') && (
       <section className="bg-white rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] p-6 overflow-hidden">
         <div className="flex items-center gap-4 mb-6 border-b border-[#F3E8E8] pb-5">
           <div className="bg-[#FFF5F5] p-3.5 rounded-2xl text-[#A76D74]"><User size={24} /></div>
@@ -153,8 +154,10 @@ export default function SettingsManager() {
           <Save size={18} /> SALVAR PERFIL
         </button>
       </section>
+      )}
 
       {/* WHATSAPP & MENSAGENS */}
+      {(!activeSection || activeSection === 'whatsapp') && (
       <section className="bg-white rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] p-6 overflow-hidden">
         <div className="flex items-center gap-4 mb-6 border-b border-[#F3E8E8] pb-5">
           <div className="bg-[#E9F0EC] p-3.5 rounded-2xl text-[#5A7A66]"><MessageCircle size={24} /></div>
@@ -236,8 +239,10 @@ export default function SettingsManager() {
           <Save size={18} /> SALVAR WHATSAPP
         </button>
       </section>
+      )}
 
       {/* REGRAS DE AGENDAMENTO */}
+      {(!activeSection || activeSection === 'agenda') && (
       <section className="bg-white rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] p-6 overflow-hidden">
         <div className="flex items-center gap-4 mb-6 border-b border-[#F3E8E8] pb-5">
           <div className="bg-[#FFF9F2] p-3.5 rounded-2xl text-[#D4A373]"><Clock size={24} /></div>
@@ -280,6 +285,88 @@ export default function SettingsManager() {
           <Save size={18} /> SALVAR REGRAS
         </button>
       </section>
+      )}
+      
+      {/* ANIVERSÁRIOS E BENEFÍCIOS */}
+      {(!activeSection || activeSection === 'aniversarios') && (
+      <section className="bg-white rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] p-6 overflow-hidden">
+        <div className="flex items-center gap-4 mb-6 border-b border-[#F3E8E8] pb-5">
+          <div className="bg-[#FFF5F5] p-3.5 rounded-2xl text-[#A76D74]"><User size={24} /></div>
+          <div>
+            <h2 className="text-xl font-bold text-[#3A3335]">Benefícios de Aniversário</h2>
+            <p className="text-sm text-[#8B7E7F] font-medium mt-0.5">Ative mimos ou descontos para o mês de aniversário.</p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="flex gap-4 pt-2 mb-4">
+            <label className={`flex items-center justify-center gap-3 cursor-pointer p-4 rounded-2xl border transition-all flex-1 ${settings.birthdayBenefitActive ? 'border-[#B98389] bg-[#FFF5F5]' : 'border-[#F3E8E8] bg-[#FCFAFA]'}`}>
+              <input type="radio" name="birthdayActive" checked={settings.birthdayBenefitActive} onChange={() => setSettings({...settings, birthdayBenefitActive: true})} className="hidden" />
+              <span className={`font-bold text-sm tracking-wide ${settings.birthdayBenefitActive ? 'text-[#A76D74]' : 'text-[#8B7E7F]'}`}>ATIVAR BENEFÍCIO</span>
+            </label>
+            <label className={`flex items-center justify-center gap-3 cursor-pointer p-4 rounded-2xl border transition-all flex-1 ${!settings.birthdayBenefitActive ? 'border-[#B98389] bg-[#FFF5F5]' : 'border-[#F3E8E8] bg-[#FCFAFA]'}`}>
+              <input type="radio" name="birthdayActive" checked={!settings.birthdayBenefitActive} onChange={() => setSettings({...settings, birthdayBenefitActive: false})} className="hidden" />
+              <span className={`font-bold text-sm tracking-wide ${!settings.birthdayBenefitActive ? 'text-[#A76D74]' : 'text-[#8B7E7F]'}`}>DESATIVAR</span>
+            </label>
+          </div>
+
+          {settings.birthdayBenefitActive && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 animate-in slide-in-from-top-2 duration-300">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide">Qual o presente?</label>
+                <input type="text" value={settings.birthdayBenefitValue || ''} onChange={e => setSettings({...settings, birthdayBenefitValue: e.target.value})} className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-medium transition-all" placeholder="Ex: 15% OFF ou Brinde" />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide">Mensagem de Aniversário (WhatsApp)</label>
+                  <button onClick={() => setSettings({...settings, msgBirthday: "Olá, {cliente}! 💕\nPassando para desejar um feliz aniversário! 🎂✨\n\nDesejamos que seu dia seja maravilhoso!\n\nPreparamos um carinho especial para você:\n{beneficio}\n\nEsperamos você em breve! 💗"})} className="text-[10px] uppercase font-bold text-[#B98389] hover:text-[#A76D74] transition-colors flex items-center gap-1 bg-[#FFF5F5] px-2 py-1 rounded-md"><RotateCcw size={12}/> Restaurar</button>
+                </div>
+                <textarea value={settings.msgBirthday || ''} onChange={e => setSettings({...settings, msgBirthday: e.target.value})} className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-medium h-32 resize-none transition-all" />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <button onClick={() => handleSave('Aniversário')} disabled={saving} className="mt-8 w-full sm:w-auto px-8 py-3.5 bg-[#5A7A66] text-white font-bold text-sm tracking-wide rounded-xl hover:bg-[#4A6454] transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-md shadow-[#5A7A66]/20">
+          <Save size={18} /> SALVAR ANIVERSÁRIOS
+        </button>
+      </section>
+      )}
+
+      {/* LEMBRETES DE AGENDAMENTO */}
+      {(!activeSection || activeSection === 'lembretes') && (
+      <section className="bg-white rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] p-6 overflow-hidden">
+        <div className="flex items-center gap-4 mb-6 border-b border-[#F3E8E8] pb-5">
+          <div className="bg-[#E9F0EC] p-3.5 rounded-2xl text-[#5A7A66]"><Clock size={24} /></div>
+          <div>
+            <h2 className="text-xl font-bold text-[#3A3335]">Lembretes Automáticos</h2>
+            <p className="text-sm text-[#8B7E7F] font-medium mt-0.5">Configure os textos de aviso disparados no Dashboard.</p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center">
+              <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide">Mensagem de Lembrete (1 dia antes)</label>
+              <button onClick={() => setSettings({...settings, msgReminder1: "Olá, {cliente}! 💕\n\nPassando para lembrar do seu atendimento:\n\n✨ Procedimento: {procedimento}\n📅 Data: {data}\n⏰ Horário: {horario}\n\nEstamos te esperando! 💗"})} className="text-[10px] uppercase font-bold text-[#B98389] hover:text-[#A76D74] transition-colors flex items-center gap-1 bg-[#FFF5F5] px-2 py-1 rounded-md"><RotateCcw size={12}/> Restaurar</button>
+            </div>
+            <textarea value={settings.msgReminder1 || ''} onChange={e => setSettings({...settings, msgReminder1: e.target.value})} className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-medium h-32 resize-none transition-all" />
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center">
+              <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide">Mensagem de Lembrete (Horas antes)</label>
+              <button onClick={() => setSettings({...settings, msgReminder2: "Bom dia, {cliente}! ✨\n\nSeu atendimento está marcado para hoje:\n\n✨ {procedimento}\n⏰ {horario}\n\nAté logo! 💕"})} className="text-[10px] uppercase font-bold text-[#B98389] hover:text-[#A76D74] transition-colors flex items-center gap-1 bg-[#FFF5F5] px-2 py-1 rounded-md"><RotateCcw size={12}/> Restaurar</button>
+            </div>
+            <textarea value={settings.msgReminder2 || ''} onChange={e => setSettings({...settings, msgReminder2: e.target.value})} className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-medium h-32 resize-none transition-all" />
+          </div>
+        </div>
+
+        <button onClick={() => handleSave('Lembretes')} disabled={saving} className="mt-8 w-full sm:w-auto px-8 py-3.5 bg-[#5A7A66] text-white font-bold text-sm tracking-wide rounded-xl hover:bg-[#4A6454] transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-md shadow-[#5A7A66]/20">
+          <Save size={18} /> SALVAR LEMBRETES
+        </button>
+      </section>
+      )}
     </div>
   );
 }

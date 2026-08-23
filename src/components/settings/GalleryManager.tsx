@@ -5,21 +5,24 @@ import { Image as ImageIcon, Trash2, GripVertical, Star, Plus } from "lucide-rea
 
 export default function GalleryManager() {
   const [images, setImages] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
 
   useEffect(() => {
-    fetch('/api/gallery')
-      .then(res => res.json())
-      .then(data => {
-        setImages(data);
-        setLoading(false);
-      });
+    Promise.all([
+      fetch('/api/gallery').then(res => res.json()),
+      fetch('/api/services').then(res => res.json())
+    ]).then(([galleryData, servicesData]) => {
+      setImages(galleryData);
+      setServices(servicesData);
+      setLoading(false);
+    });
   }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (images.length >= 6) return alert("Você pode adicionar no máximo 6 fotos na galeria.");
+    if (images.length >= 50) return alert("Você atingiu o limite de fotos da galeria.");
     
     const file = e.target.files?.[0];
     if (!file) return;
@@ -68,6 +71,42 @@ export default function GalleryManager() {
       showToast("Imagem adicionada!");
     } else {
       alert("Erro ao enviar imagem.");
+    }
+    setSaving(false);
+  };
+
+  const handleAddInstagram = async () => {
+    if (images.length >= 50) return alert("Você atingiu o limite da galeria.");
+    const url = prompt("Cole o link do Reels do Instagram ou TikTok:");
+    if (!url) return;
+    
+    // Convert short link / reel format to embed if possible
+    let finalUrl = url;
+    if (url.includes("instagram.com")) {
+      const urlObj = new URL(url);
+      urlObj.search = ""; // remove query params
+      finalUrl = urlObj.toString();
+      if (!finalUrl.endsWith("/")) finalUrl += "/";
+      finalUrl += "embed";
+    } else if (url.includes("tiktok.com")) {
+      // Basic TikTok embed format is different, but for now we'll just save it, and let the Carousel handle it or just use a generic iframe. We'll do our best.
+      // Easiest is to save the raw URL and parse in the frontend.
+      finalUrl = url;
+    }
+
+    setSaving(true);
+    const res = await fetch('/api/gallery', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: finalUrl, type: "INSTAGRAM", order: images.length })
+    });
+    
+    if (res.ok) {
+      const created = await res.json();
+      setImages([...images, created]);
+      showToast("Vídeo adicionado!");
+    } else {
+      alert("Erro ao adicionar vídeo.");
     }
     setSaving(false);
   };
@@ -138,21 +177,27 @@ export default function GalleryManager() {
         <div className="bg-[#FFF5F5] p-3.5 rounded-2xl text-[#A76D74]"><ImageIcon size={24} /></div>
         <div className="flex-1">
           <h2 className="text-xl font-bold text-[#3A3335]">Galeria de Trabalhos</h2>
-          <p className="text-sm text-[#8B7E7F] font-medium mt-0.5">Adicione fotos dos seus trabalhos para mostrar seu estilo e resultados às clientes. Máximo de 6 fotos.</p>
+          <p className="text-sm text-[#8B7E7F] font-medium mt-0.5">Adicione fotos dos seus trabalhos para mostrar seu estilo e resultados às clientes. Você pode vincular a procedimentos específicos. Máximo de 50 fotos.</p>
         </div>
-        <div className="hidden sm:block">
-          <label className={`flex items-center gap-1.5 bg-[#A76D74] text-white font-bold px-4 py-2.5 rounded-xl transition-all text-sm shadow-md shadow-[#A76D74]/20 active:scale-[0.98] ${images.length >= 6 || saving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#8A5A60] cursor-pointer'}`}>
-            <Plus size={16} /> ADICIONAR
-            <input type="file" accept="image/jpeg, image/png, image/webp" className="hidden" disabled={images.length >= 6 || saving} onChange={handleFileChange} />
+        <div className="hidden sm:flex gap-2">
+          <button onClick={handleAddInstagram} disabled={images.length >= 50 || saving} className={`flex items-center gap-1.5 bg-white border border-[#D9A0A0] text-[#A76D74] font-bold px-4 py-2.5 rounded-xl transition-all text-sm shadow-sm active:scale-[0.98] ${images.length >= 50 || saving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#FFF5F5] cursor-pointer'}`}>
+            <Plus size={16} /> ADICIONAR VÍDEO (LINK)
+          </button>
+          <label className={`flex items-center gap-1.5 bg-[#A76D74] text-white font-bold px-4 py-2.5 rounded-xl transition-all text-sm shadow-md shadow-[#A76D74]/20 active:scale-[0.98] ${images.length >= 50 || saving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#8A5A60] cursor-pointer'}`}>
+            <Plus size={16} /> ADICIONAR FOTO
+            <input type="file" accept="image/jpeg, image/png, image/webp" className="hidden" disabled={images.length >= 50 || saving} onChange={handleFileChange} />
           </label>
         </div>
       </div>
 
-      <div className="sm:hidden mb-5">
-        <label className={`flex items-center justify-center w-full gap-1.5 bg-[#A76D74] text-white font-bold px-4 py-3 rounded-xl transition-all text-sm shadow-md shadow-[#A76D74]/20 active:scale-[0.98] ${images.length >= 6 || saving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#8A5A60] cursor-pointer'}`}>
+      <div className="sm:hidden mb-5 flex flex-col gap-2">
+        <label className={`flex items-center justify-center w-full gap-1.5 bg-[#A76D74] text-white font-bold px-4 py-3 rounded-xl transition-all text-sm shadow-md shadow-[#A76D74]/20 active:scale-[0.98] ${images.length >= 50 || saving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#8A5A60] cursor-pointer'}`}>
           <Plus size={16} /> ADICIONAR FOTO
-          <input type="file" accept="image/jpeg, image/png, image/webp" className="hidden" disabled={images.length >= 6 || saving} onChange={handleFileChange} />
+          <input type="file" accept="image/jpeg, image/png, image/webp" className="hidden" disabled={images.length >= 50 || saving} onChange={handleFileChange} />
         </label>
+        <button onClick={handleAddInstagram} disabled={images.length >= 50 || saving} className={`flex items-center justify-center w-full gap-1.5 bg-white border border-[#D9A0A0] text-[#A76D74] font-bold px-4 py-3 rounded-xl transition-all text-sm shadow-sm active:scale-[0.98] ${images.length >= 50 || saving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#FFF5F5] cursor-pointer'}`}>
+          <Plus size={16} /> ADICIONAR VÍDEO (LINK)
+        </button>
       </div>
 
       <div className="space-y-3">
@@ -169,8 +214,14 @@ export default function GalleryManager() {
                   <button disabled={index === 0} onClick={() => moveImage(index, 'up')} className="hover:text-[#A76D74] disabled:opacity-30"><GripVertical size={16}/></button>
                 </div>
                 
-                <div className="w-20 h-20 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-[#F3E8E8]">
-                  <img src={img.url} className="w-full h-full object-cover" alt="Galeria" />
+                <div className="w-20 h-20 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-[#F3E8E8] relative flex items-center justify-center">
+                  {img.type === "INSTAGRAM" ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-[#FFF5F5] text-[#A76D74] p-1 text-center">
+                      <span className="text-[10px] font-bold">VÍDEO LINK</span>
+                    </div>
+                  ) : (
+                    <img src={img.url} className="w-full h-full object-cover" alt="Galeria" />
+                  )}
                 </div>
                 
                 <div className="flex flex-col flex-1 gap-2">
@@ -188,7 +239,27 @@ export default function GalleryManager() {
                       <Trash2 size={16} />
                     </button>
                   </div>
-                  <span className="text-xs text-[#8B7E7F] font-medium">Ordem: {index + 1}</span>
+                  <div className="mt-2">
+                    <select 
+                      value={img.serviceId || ""} 
+                      onChange={async (e) => {
+                        const val = e.target.value === "" ? null : e.target.value;
+                        setImages(images.map(i => i.id === img.id ? { ...i, serviceId: val } : i));
+                        await fetch(`/api/gallery/${img.id}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ serviceId: val })
+                        });
+                        showToast("Foto vinculada atualizada!");
+                      }}
+                      className="w-full text-xs p-1.5 rounded-lg border border-[#F3E8E8] bg-[#FCFAFA] text-[#8B7E7F] outline-none"
+                    >
+                      <option value="">Galeria Principal (Sem vinculo)</option>
+                      {services.map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             ))}

@@ -50,10 +50,10 @@ export default async function ClientesPage() {
                   <div className="mt-3 text-xs bg-[#FCFAFA] border border-[#F3E8E8] p-3 rounded-xl text-[#5A5052] flex items-center gap-2 font-medium">
                     <Calendar size={14} className="text-[#B98389]" />
                     Último: {format(new Date(lastAppt.date + "T00:00:00"), "dd/MM/yyyy")} 
-                    <span className={`font-bold ml-1 ${
-                      lastAppt.status === 'CONFIRMED' ? 'text-[#5A7A66]' :
+                    <span className={`font-bold ml-1 uppercase tracking-wider text-[10px] ${
+                      lastAppt.status === 'CONFIRMED' || lastAppt.status === 'COMPLETED' ? 'text-[#5A7A66]' :
                       lastAppt.status === 'PENDING' ? 'text-[#D4A373]' : 'text-[#8B7E7F]'
-                    }`}>({lastAppt.status === 'PENDING' ? 'PENDENTE' : lastAppt.status === 'CONFIRMED' ? 'CONFIRMADO' : lastAppt.status === 'CANCELLED' ? 'CANCELADO' : 'RECUSADO'})</span>
+                    }`}>({lastAppt.status === 'PENDING' ? 'Aguardando' : lastAppt.status === 'CONFIRMED' ? 'Confirmado' : lastAppt.status === 'CANCELLED' ? 'Cancelado' : lastAppt.status === 'COMPLETED' ? 'Concluído' : 'Recusado'})</span>
                   </div>
                 )}
               </div>

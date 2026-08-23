@@ -23,6 +23,7 @@ export async function POST(request: Request) {
         description: body.description,
         price: parseFloat(body.price),
         duration: parseInt(body.duration),
+        requiresDeposit: body.requiresDeposit || false,
         active: true
       }
     });

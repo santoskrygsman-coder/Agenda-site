@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, Settings, Users, Home as HomeIcon, Scissors, Sparkles } from "lucide-react";
+import { CalendarDays, Settings, Users, Home as HomeIcon, Scissors, Sparkles, Menu } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,11 +11,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <h2 className="text-xl font-bold tracking-tight text-[#3A3335]">Painel <span className="text-[#B98389]">Premium</span></h2>
         </div>
         <nav className="flex-1 p-4 space-y-1.5">
-          <NavItem href="/admin" icon={<HomeIcon size={18} />} text="Dashboard" />
+          <NavItem href="/admin" icon={<HomeIcon size={18} />} text="Início" />
           <NavItem href="/admin/agenda" icon={<CalendarDays size={18} />} text="Agenda" />
           <NavItem href="/admin/clientes" icon={<Users size={18} />} text="Clientes" />
-          <NavItem href="/admin/procedimentos" icon={<Scissors size={18} />} text="Procedimentos" />
-          <NavItem href="/admin/config" icon={<Settings size={18} />} text="Configurações" />
+          <NavItem href="/admin/mais" icon={<Menu size={18} />} text="Mais" />
         </nav>
       </aside>
 
@@ -30,14 +29,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Bottom Navigation Mobile */}
       <nav 
-        className="sm:hidden fixed bottom-0 w-full bg-white/95 backdrop-blur-md border-t border-[#F3E8E8] flex justify-around items-center px-1 z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.02)]"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        className="sm:hidden fixed bottom-0 w-full bg-white/95 backdrop-blur-md border-t border-[#F3E8E8] flex justify-around items-center px-1 z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.02)] pb-[env(safe-area-inset-bottom)]"
       >
         <NavItem href="/admin" icon={<HomeIcon size={22} />} text="Início" mobile />
         <NavItem href="/admin/agenda" icon={<CalendarDays size={22} />} text="Agenda" mobile />
         <NavItem href="/admin/clientes" icon={<Users size={22} />} text="Clientes" mobile />
-        <NavItem href="/admin/procedimentos" icon={<Scissors size={22} />} text="Serviços" mobile />
-        <NavItem href="/admin/config" icon={<Settings size={22} />} text="Config" mobile />
+        <NavItem href="/admin/mais" icon={<Menu size={22} />} text="Mais" mobile />
       </nav>
     </div>
   );

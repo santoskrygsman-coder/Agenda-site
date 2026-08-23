@@ -7,11 +7,13 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const services = await prisma.service.findMany({
     where: { active: true },
-    orderBy: { name: "asc" }
+    orderBy: { name: "asc" },
+    include: { galleryImages: true }
   });
 
   const settings = await prisma.settings.findFirst();
   const gallery = await prisma.galleryImage.findMany({
+    where: { serviceId: null },
     orderBy: { order: "asc" }
   });
 

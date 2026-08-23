@@ -3,13 +3,12 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 
+import Carousel from "@/components/Carousel";
+
 export default function PublicGallery({ images }: { images: any[] }) {
   const [selectedImg, setSelectedImg] = useState<string | null>(null);
 
   if (images.length === 0) return null;
-
-  const featured = images.find(img => img.isFeature) || images[0];
-  const others = images.filter(img => img.id !== featured.id);
 
   return (
     <div className="mb-10 animate-in fade-in duration-700">
@@ -21,30 +20,7 @@ export default function PublicGallery({ images }: { images: any[] }) {
         </h2>
       </div>
 
-      <div className="space-y-2">
-        {/* Foto Destaque */}
-        <div 
-          className="w-full aspect-[4/3] rounded-3xl overflow-hidden cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-[#F3E8E8] transition-transform active:scale-[0.98]"
-          onClick={() => setSelectedImg(featured.url)}
-        >
-          <img src={featured.url} alt="Destaque" className="w-full h-full object-cover" loading="lazy" />
-        </div>
-        
-        {/* Demais Fotos */}
-        {others.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {others.map(img => (
-              <div 
-                key={img.id} 
-                className="aspect-square rounded-2xl overflow-hidden cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-[#F3E8E8] transition-transform active:scale-95"
-                onClick={() => setSelectedImg(img.url)}
-              >
-                <img src={img.url} alt="Galeria" className="w-full h-full object-cover" loading="lazy" />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <Carousel images={images} autoPlayInterval={4500} />
 
       {/* Modal / Lightbox */}
       {selectedImg && (

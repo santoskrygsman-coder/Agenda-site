@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isBefore, startOfDay, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Clock, CalendarIcon, CheckCircle, ArrowLeft, Heart, Sparkles, MessageCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, CalendarIcon, CheckCircle, ArrowLeft, Heart, Sparkles, MessageCircle, CreditCard, Gift } from "lucide-react";
 import { WhatsAppService } from "@/lib/whatsappService";
+import Carousel from "@/components/Carousel";
 
 export default function BookingWizard({ services, settings }: { services: any[], settings: any }) {
   const [step, setStep] = useState(1);
@@ -13,7 +14,7 @@ export default function BookingWizard({ services, settings }: { services: any[],
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   
-  const [formData, setFormData] = useState({ name: "", phone: "", notes: "" });
+  const [formData, setFormData] = useState({ name: "", phone: "", notes: "", birthDate: "" });
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -159,20 +160,33 @@ export default function BookingWizard({ services, settings }: { services: any[],
             <p className="text-[#8B7E7F] text-sm mt-1 font-medium">Realce sua beleza com um atendimento personalizado.</p>
           </div>
           
-          <div className="space-y-4">
+          <div className="space-y-6">
             {services.map((service: any) => (
               <div 
                 key={service.id} 
                 onClick={() => handleServiceSelect(service)}
-                className="p-5 border border-[#F3E8E8] bg-white rounded-2xl hover:border-[#D9A0A0] hover:bg-[#FFF5F5] cursor-pointer transition-all shadow-[0_4px_20px_rgba(0,0,0,0.02)] active:scale-[0.98]"
+                className="p-5 border border-[#F3E8E8] bg-white rounded-3xl hover:border-[#D9A0A0] hover:bg-[#FFF5F5] cursor-pointer transition-all shadow-[0_4px_20px_rgba(0,0,0,0.02)] active:scale-[0.98] group"
               >
-                <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-[#3A3335]">{service.name}</h3>
+                {/* Seção da Galeria de Fotos vinculada ao Procedimento */}
+                {service.galleryImages && service.galleryImages.length > 0 && (
+                  <Carousel images={service.galleryImages} />
+                )}
+                
+                <div className="flex justify-between items-start mt-2">
+                  <h3 className="font-semibold text-[#3A3335] group-hover:text-[#A76D74] transition-colors">{service.name}</h3>
                   <span className="font-bold text-[#B98389]">R$ {service.price.toFixed(2)}</span>
                 </div>
                 {service.description && <p className="text-sm text-[#8B7E7F] mt-2 leading-relaxed">{service.description}</p>}
-                <div className="mt-3 text-xs font-medium text-[#A99D9E] flex items-center">
-                  <Clock size={12} className="mr-1.5 opacity-70" /> {service.duration} min
+                
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <div className="text-xs font-bold tracking-wide uppercase bg-[#FCFAFA] border border-[#F3E8E8] text-[#8B7E7F] px-3 py-1.5 rounded-full flex items-center">
+                    <Clock size={12} className="mr-1.5" /> {service.duration} min
+                  </div>
+                  {service.requiresDeposit && (
+                    <div className="text-xs font-bold tracking-wide uppercase bg-[#FFF9F2] text-[#D4A373] px-3 py-1.5 rounded-full flex items-center">
+                      <CreditCard size={12} className="mr-1.5" /> Exige Sinal
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -246,44 +260,54 @@ export default function BookingWizard({ services, settings }: { services: any[],
             <p className="text-[#8B7E7F] text-sm mt-1 font-medium">Informe seus dados para solicitar seu horário.</p>
           </div>
           
-          <div className="bg-[#FFF5F5] p-5 rounded-2xl mb-6 border border-[#F3E8E8]">
-            <h3 className="font-bold text-[#A76D74] mb-3 flex items-center gap-2 text-sm">
+          <div className="bg-[#FFF5F5] p-5 rounded-3xl mb-6 border border-[#F3E8E8]">
+            <h3 className="font-bold text-[#A76D74] mb-4 flex items-center gap-2 text-sm uppercase tracking-wide">
               <Heart size={14} /> Seu agendamento
             </h3>
-            <div className="space-y-2">
-              <p className="text-sm text-[#5A5052] flex items-center gap-2">
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-[#5A5052] flex items-center gap-2">
                 <Sparkles size={14} className="text-[#D4A373]" /> {selectedService.name}
               </p>
-              <p className="text-sm text-[#5A5052] flex items-center gap-2">
-                <CalendarIcon size={14} className="text-[#D4A373]" /> {format(selectedDate!, "dd/MM/yyyy")}
-              </p>
-              <p className="text-sm text-[#5A5052] flex items-center gap-2">
-                <Clock size={14} className="text-[#D4A373]" /> {selectedTime}
-              </p>
-              <div className="pt-2 mt-2 border-t border-[#F3E8E8]">
+              <div className="flex gap-4">
+                <p className="text-sm font-semibold text-[#5A5052] flex items-center gap-2">
+                  <CalendarIcon size={14} className="text-[#D4A373]" /> {format(selectedDate!, "dd/MM/yyyy")}
+                </p>
+                <p className="text-sm font-semibold text-[#5A5052] flex items-center gap-2">
+                  <Clock size={14} className="text-[#D4A373]" /> {selectedTime}
+                </p>
+              </div>
+              <div className="pt-3 mt-1 border-t border-[#F3E8E8] flex justify-between items-center">
+                <p className="text-sm font-bold text-[#5A5052] uppercase tracking-wide">Valor:</p>
                 <p className="text-sm font-bold text-[#A76D74]">R$ {selectedService.price.toFixed(2)}</p>
               </div>
+              {selectedService.requiresDeposit && (
+                <div className="pt-2">
+                  <div className="text-xs font-bold tracking-wide uppercase bg-[#FFF9F2] text-[#D4A373] px-3 py-2 rounded-xl flex items-center gap-2">
+                    <CreditCard size={14} /> Requer sinal prévio
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-xs font-bold text-[#8B7E7F] mb-1.5 uppercase tracking-wide">Nome Completo</label>
+              <label className="block text-xs font-bold text-[#8B7E7F] mb-1.5 uppercase tracking-wide">Nome Completo *</label>
               <input 
                 required 
                 type="text" 
-                className="w-full p-4 border border-[#F3E8E8] bg-white rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none transition-all text-[#3A3335] shadow-[0_2px_10px_rgba(0,0,0,0.01)]"
+                className="w-full p-4 border border-[#F3E8E8] bg-white rounded-2xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none transition-all text-[#3A3335] shadow-[0_2px_10px_rgba(0,0,0,0.01)]"
                 placeholder="Ex: Maria da Silva"
                 value={formData.name}
                 onChange={e => setFormData({...formData, name: e.target.value})}
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#8B7E7F] mb-1.5 uppercase tracking-wide">WhatsApp</label>
+              <label className="block text-xs font-bold text-[#8B7E7F] mb-1.5 uppercase tracking-wide">WhatsApp *</label>
               <input 
                 required 
                 type="tel" 
-                className="w-full p-4 border border-[#F3E8E8] bg-white rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none transition-all text-[#3A3335] shadow-[0_2px_10px_rgba(0,0,0,0.01)]"
+                className="w-full p-4 border border-[#F3E8E8] bg-white rounded-2xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none transition-all text-[#3A3335] shadow-[0_2px_10px_rgba(0,0,0,0.01)]"
                 placeholder="(11) 99999-9999"
                 value={formData.phone}
                 onChange={e => {
@@ -296,10 +320,31 @@ export default function BookingWizard({ services, settings }: { services: any[],
                 }}
               />
             </div>
+            
+            <div className="bg-[#FCFAFA] p-4 rounded-2xl border border-[#F3E8E8]">
+              <label className="block text-xs font-bold text-[#8B7E7F] mb-1.5 uppercase tracking-wide flex items-center gap-1.5">
+                <Gift size={14} className="text-[#B98389]" /> Aniversário (Opcional)
+              </label>
+              <input 
+                type="text" 
+                className="w-full p-3.5 border border-[#E8DCDC] bg-white rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none transition-all text-[#3A3335] text-sm"
+                placeholder="DD/MM/AAAA"
+                value={formData.birthDate}
+                onChange={e => {
+                  let v = e.target.value.replace(/\D/g, '');
+                  if (v.length > 8) v = v.substring(0, 8);
+                  if (v.length > 2) v = `${v.substring(0,2)}/${v.substring(2)}`;
+                  if (v.length > 5) v = `${v.substring(0,5)}/${v.substring(5)}`;
+                  setFormData({...formData, birthDate: v});
+                }}
+              />
+              <p className="text-[10px] text-[#A99D9E] mt-1.5 font-medium">Cadastre para receber mimos especiais!</p>
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-[#8B7E7F] mb-1.5 uppercase tracking-wide">Observação (Opcional)</label>
               <textarea 
-                className="w-full p-4 border border-[#F3E8E8] bg-white rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none transition-all text-[#3A3335] shadow-[0_2px_10px_rgba(0,0,0,0.01)] resize-none"
+                className="w-full p-4 border border-[#F3E8E8] bg-white rounded-2xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none transition-all text-[#3A3335] shadow-[0_2px_10px_rgba(0,0,0,0.01)] resize-none"
                 placeholder="Alguma dúvida ou restrição?"
                 rows={2}
                 value={formData.notes}
@@ -320,33 +365,51 @@ export default function BookingWizard({ services, settings }: { services: any[],
 
       {/* STEP 5: SUCCESS */}
       {step === 5 && (
-        <div className="text-center animate-in zoom-in duration-700 py-10 px-2 sm:px-4">
-          <div className="w-20 h-20 bg-[#FFF5F5] text-[#B98389] rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-white shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+        <div className="text-center animate-in zoom-in duration-700 py-6 px-2 sm:px-4">
+          <div className="w-20 h-20 bg-[#FFF5F5] text-[#B98389] rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-white shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
             <CheckCircle size={36} />
           </div>
           <h2 className="text-2xl font-bold text-[#3A3335] mb-2 flex justify-center items-center gap-2">
             💕 Solicitação enviada!
           </h2>
-          <p className="text-[#8B7E7F] mb-1 text-sm leading-relaxed max-w-[260px] mx-auto font-medium">
-            Seu pedido de agendamento foi registrado.
-          </p>
-          <p className="text-[#A76D74] mb-8 text-xs font-bold leading-relaxed max-w-[260px] mx-auto uppercase tracking-wide">
-            O horário ainda depende da confirmação da profissional.
+          <p className="text-[#8B7E7F] mb-6 text-sm leading-relaxed max-w-[280px] mx-auto font-medium">
+            Sua solicitação de agendamento foi registrada.
           </p>
           
-          <div className="bg-white border border-[#F3E8E8] p-5 rounded-3xl text-left mb-8 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-            <p className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide mb-1">Procedimento:</p>
+          <div className="bg-white border border-[#F3E8E8] p-5 rounded-3xl text-left mb-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-[#D4A373]"></div>
+            <p className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide mb-1 flex items-center gap-1.5">
+              <Sparkles size={12} className="text-[#D4A373]" /> Procedimento
+            </p>
             <p className="text-lg font-bold text-[#3A3335] mb-4">{selectedService.name}</p>
 
-            <div className="flex items-center gap-4 text-[#5A5052] font-medium">
-              <p className="flex items-center gap-2">
-                <CalendarIcon size={18} className="text-[#B98389]" /> {format(selectedDate!, "dd/MM/yyyy")}
+            <div className="flex items-center gap-4 text-[#5A5052] font-semibold text-sm mb-4">
+              <p className="flex items-center gap-1.5">
+                <CalendarIcon size={16} className="text-[#B98389]" /> {format(selectedDate!, "dd/MM/yyyy")}
               </p>
-              <p className="flex items-center gap-2">
-                <Clock size={18} className="text-[#B98389]" /> {selectedTime}
+              <p className="flex items-center gap-1.5">
+                <Clock size={16} className="text-[#B98389]" /> {selectedTime}
               </p>
             </div>
+            
+            <div className="p-3 bg-[#FFF9F2] rounded-xl flex items-start gap-2">
+              <div className="mt-0.5"><div className="w-2 h-2 rounded-full bg-[#D4A373] animate-pulse"></div></div>
+              <div>
+                <p className="text-xs font-bold text-[#D4A373] uppercase tracking-wide mb-0.5">AGUARDANDO CONFIRMAÇÃO</p>
+                <p className="text-[11px] text-[#A99D9E] font-medium leading-tight">O horário ainda não está confirmado pela profissional.</p>
+              </div>
+            </div>
           </div>
+
+          {selectedService.requiresDeposit && (
+            <div className="bg-[#FFF5F5] border border-[#F3E8E8] rounded-2xl p-4 mb-6 flex gap-3 text-left">
+              <div className="shrink-0 text-[#A76D74]"><CreditCard size={20} /></div>
+              <div>
+                <p className="text-sm font-bold text-[#3A3335] mb-1">Este procedimento requer um sinal para confirmação.</p>
+                <p className="text-xs text-[#8B7E7F] leading-relaxed">A forma de pagamento será combinada diretamente com a profissional pelo WhatsApp.</p>
+              </div>
+            </div>
+          )}
 
           {(() => {
             const whatsappTarget = settings?.whatsappSystemNumber || settings?.whatsapp;
@@ -358,6 +421,7 @@ export default function BookingWizard({ services, settings }: { services: any[],
               format(selectedDate!, "dd/MM/yyyy"),
               selectedTime || "",
               selectedService.price,
+              selectedService.requiresDeposit,
               formData.notes
             );
             
@@ -373,16 +437,13 @@ export default function BookingWizard({ services, settings }: { services: any[],
                 >
                   <MessageCircle size={18} /> ENVIAR PELO WHATSAPP
                 </a>
-                <p className="text-xs text-[#8B7E7F] font-medium mb-8">
-                  Você será direcionada ao WhatsApp com uma mensagem pronta. Basta tocar em enviar.
-                </p>
               </>
             );
           })()}
 
           <button 
             onClick={() => window.location.reload()}
-            className="text-[#B98389] font-bold text-xs hover:text-[#A76D74] transition-colors uppercase tracking-widest border border-[#F3E8E8] bg-white px-6 py-3 rounded-full shadow-sm"
+            className="text-[#8B7E7F] font-bold text-xs hover:text-[#3A3335] transition-colors uppercase tracking-widest mt-4"
           >
             Voltar para o início
           </button>

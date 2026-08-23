@@ -16,6 +16,7 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
 
     const dataToUpdate: any = {};
     if (body.status !== undefined) dataToUpdate.status = body.status;
+    if (body.paymentStatus !== undefined) dataToUpdate.paymentStatus = body.paymentStatus;
     if (body.whatsappStatus !== undefined) {
       dataToUpdate.whatsappStatus = body.whatsappStatus;
       if (body.whatsappStatus === "OPENED") {
