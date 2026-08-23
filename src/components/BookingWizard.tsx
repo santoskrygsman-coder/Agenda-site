@@ -6,6 +6,7 @@ import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Clock, CalendarIcon, CheckCircle, ArrowLeft, Heart, Sparkles, MessageCircle, CreditCard, Gift } from "lucide-react";
 import { WhatsAppService } from "@/lib/whatsappService";
 import Carousel from "@/components/Carousel";
+import Reveal from "@/components/Reveal";
 
 export default function BookingWizard({ services, settings }: { services: any[], settings: any }) {
   const [step, setStep] = useState(1);
@@ -151,44 +152,47 @@ export default function BookingWizard({ services, settings }: { services: any[],
       {/* STEP 1: SERVICES */}
       {step === 1 && (
         <div className="animate-in slide-in-from-right-4 duration-500">
-          <div className="mb-6 text-center">
-            <h2 className="text-xl font-bold text-[#3A3335] flex items-center justify-center gap-2">
-              <span className="text-[#D4A373] text-xs">✦</span> 
-              Escolha seu procedimento
-              <span className="text-[#D4A373] text-xs">✦</span>
-            </h2>
-            <p className="text-[#8B7E7F] text-sm mt-1 font-medium">Realce sua beleza com um atendimento personalizado.</p>
-          </div>
+          <Reveal animation="fade-up" delay={0}>
+            <div className="mb-6 text-center">
+              <h2 className="text-xl font-bold text-[#3A3335] flex items-center justify-center gap-2">
+                <span className="text-[#D4A373] text-xs">✦</span> 
+                Escolha seu procedimento
+                <span className="text-[#D4A373] text-xs">✦</span>
+              </h2>
+              <p className="text-[#8B7E7F] text-sm mt-1 font-medium">Realce sua beleza com um atendimento personalizado.</p>
+            </div>
+          </Reveal>
           
           <div className="space-y-6">
-            {services.map((service: any) => (
-              <div 
-                key={service.id} 
-                onClick={() => handleServiceSelect(service)}
-                className="p-5 border border-[#F3E8E8] bg-white rounded-3xl hover:border-[#D9A0A0] hover:bg-[#FFF5F5] cursor-pointer transition-all shadow-[0_4px_20px_rgba(0,0,0,0.02)] active:scale-[0.98] group"
-              >
-                {/* Seção da Galeria de Fotos vinculada ao Procedimento */}
-                {service.galleryImages && service.galleryImages.length > 0 && (
-                  <Carousel images={service.galleryImages} />
-                )}
-                
-                <div className="flex justify-between items-start mt-2">
-                  <h3 className="font-semibold text-[#3A3335] group-hover:text-[#A76D74] transition-colors">{service.name}</h3>
-                  <span className="font-bold text-[#B98389]">R$ {service.price.toFixed(2)}</span>
-                </div>
-                {service.description && <p className="text-sm text-[#8B7E7F] mt-2 leading-relaxed">{service.description}</p>}
-                
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <div className="text-xs font-bold tracking-wide uppercase bg-[#FCFAFA] border border-[#F3E8E8] text-[#8B7E7F] px-3 py-1.5 rounded-full flex items-center">
-                    <Clock size={12} className="mr-1.5" /> {service.duration} min
-                  </div>
-                  {service.requiresDeposit && (
-                    <div className="text-xs font-bold tracking-wide uppercase bg-[#FFF9F2] text-[#D4A373] px-3 py-1.5 rounded-full flex items-center">
-                      <CreditCard size={12} className="mr-1.5" /> Exige Sinal
-                    </div>
+            {services.map((service: any, index: number) => (
+              <Reveal key={service.id} animation="fade-up" delay={100 + (index * 120)}>
+                <div 
+                  onClick={() => handleServiceSelect(service)}
+                  className="p-5 border border-[#F3E8E8] bg-white rounded-3xl hover:border-[#D9A0A0] hover:bg-[#FFF5F5] cursor-pointer transition-all duration-300 md:hover:scale-[1.015] md:hover:shadow-lg shadow-[0_4px_20px_rgba(0,0,0,0.02)] active:scale-[0.98] group"
+                >
+                  {/* Seção da Galeria de Fotos vinculada ao Procedimento */}
+                  {service.galleryImages && service.galleryImages.length > 0 && (
+                    <Carousel images={service.galleryImages} />
                   )}
+                  
+                  <div className="flex justify-between items-start mt-2">
+                    <h3 className="font-semibold text-[#3A3335] group-hover:text-[#A76D74] transition-colors">{service.name}</h3>
+                    <span className="font-bold text-[#B98389]">R$ {service.price.toFixed(2)}</span>
+                  </div>
+                  {service.description && <p className="text-sm text-[#8B7E7F] mt-2 leading-relaxed">{service.description}</p>}
+                  
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <div className="text-xs font-bold tracking-wide uppercase bg-[#FCFAFA] border border-[#F3E8E8] text-[#8B7E7F] px-3 py-1.5 rounded-full flex items-center">
+                      <Clock size={12} className="mr-1.5" /> {service.duration} min
+                    </div>
+                    {service.requiresDeposit && (
+                      <div className="text-xs font-bold tracking-wide uppercase bg-[#FFF9F2] text-[#D4A373] px-3 py-1.5 rounded-full flex items-center">
+                        <CreditCard size={12} className="mr-1.5" /> Exige Sinal
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>

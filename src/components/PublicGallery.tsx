@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
-
 import Carousel from "@/components/Carousel";
+import Reveal from "@/components/Reveal";
 
 export default function PublicGallery({ images }: { images: any[] }) {
   const [selectedImg, setSelectedImg] = useState<string | null>(null);
@@ -11,7 +11,7 @@ export default function PublicGallery({ images }: { images: any[] }) {
   if (images.length === 0) return null;
 
   return (
-    <div className="mb-10 animate-in fade-in duration-700">
+    <Reveal animation="fade-up" delay={0} duration={800} className="mb-10">
       <div className="text-center mb-5">
         <h2 className="text-sm font-bold text-[#3A3335] uppercase tracking-widest flex items-center justify-center gap-2">
           <span className="text-[#D4A373] text-[10px]">✦</span> 
@@ -43,6 +43,6 @@ export default function PublicGallery({ images }: { images: any[] }) {
           />
         </div>
       )}
-    </div>
+    </Reveal>
   );
 }

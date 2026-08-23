@@ -126,7 +126,12 @@ export default function Carousel({ images, autoPlayInterval = 5000 }: { images: 
           const isNear = Math.abs(currentIndex - i) <= 1 || (currentIndex === 0 && i === images.length - 1) || (currentIndex === images.length - 1 && i === 0);
           
           return (
-            <div key={img.id || i} className="w-full h-full shrink-0 relative flex justify-center bg-black/5">
+            <div 
+              key={img.id || i} 
+              className={`w-full h-full shrink-0 relative flex justify-center bg-black/5 transition-all duration-700 ease-[cubic-bezier(0.21,1.02,0.73,1)] ${
+                currentIndex === i ? 'opacity-100 scale-100' : 'opacity-40 scale-[0.96]'
+              }`}
+            >
               {img.type === "INSTAGRAM" ? (
                 // Force autoplay for instagram embeds if possible
                 <iframe 
@@ -142,7 +147,7 @@ export default function Carousel({ images, autoPlayInterval = 5000 }: { images: 
                   <video
                     ref={el => { videoRefs.current[i] = el; }}
                     src={img.url}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover transition-opacity duration-700"
                     autoPlay={currentIndex === i}
                     muted
                     playsInline
@@ -156,7 +161,7 @@ export default function Carousel({ images, autoPlayInterval = 5000 }: { images: 
                 <img 
                   src={img.url}
                   alt={`Galeria ${i + 1}`}
-                  className="w-full h-full object-cover pointer-events-none select-none"
+                  className="w-full h-full object-cover pointer-events-none select-none transition-opacity duration-700"
                   loading={i === 0 ? "eager" : "lazy"}
                   draggable={false}
                 />
