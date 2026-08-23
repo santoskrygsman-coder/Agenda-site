@@ -47,6 +47,8 @@ model Appointment {
   endTime    String   // Formato HH:MM
   status     String   @default("PENDING") // PENDING, CONFIRMED, REJECTED, CANCELED
   notes      String?
+  whatsappStatus String @default("NOT_SENT") // NOT_SENT, OPENED, SENT_MANUALLY
+  whatsappOpenedAt DateTime?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -78,8 +80,10 @@ model Settings {
   specialty          String   @default("Especialista em olhar")
   description        String?
   address            String?
-  whatsapp           String?
+  whatsapp           String?  // Opcional, para exibição pública
   instagram          String?
+  
+  whatsappSystemNumber String? // Para envio de mensagens automáticas / deep links
   
   msgNewRequest      String   @default("✨ Nova solicitação de agendamento\n\nCliente: {cliente}\nData: {data}\nHorário: {horario}\nProcedimento: {procedimento}\n\nAguardando confirmação.")
   msgConfirmed       String   @default("✅ Agendamento Confirmado!\n\nOlá {cliente}, seu horário para {procedimento} no dia {data} às {horario} está confirmado.")

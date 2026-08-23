@@ -349,6 +349,35 @@ export default function BookingWizard({ services, settings }: { services: any[],
             </div>
           </div>
 
+          {settings?.whatsappSystemNumber && (
+            <a 
+              href={(() => {
+                const msg = `💕 NOVO AGENDAMENTO
+
+Olá! Você recebeu uma nova solicitação de agendamento. 💕
+
+👤 Cliente: ${formData.name}
+✨ Procedimento: ${selectedService.name}
+📅 Data: ${format(selectedDate!, "dd/MM/yyyy")}
+⏰ Horário: ${selectedTime}
+💰 Valor: R$ ${selectedService.price.toFixed(2).replace('.', ',')}
+📝 Observação: ${formData.notes || "Nenhuma"}
+
+🟡 Status: Aguardando confirmação.
+
+Acesse o painel para confirmar ou recusar o horário.`;
+                const cleanedPhone = settings.whatsappSystemNumber.replace(/\D/g, "");
+                const finalPhone = (cleanedPhone.length === 10 || cleanedPhone.length === 11) ? `55${cleanedPhone}` : cleanedPhone;
+                return `https://wa.me/${finalPhone}?text=${encodeURIComponent(msg)}`;
+              })()}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full bg-[#25D366] text-white font-bold text-sm tracking-wide p-4 rounded-2xl mb-4 hover:bg-[#1ebd5a] transition-all shadow-lg shadow-[#25D366]/20 flex justify-center items-center gap-2"
+            >
+              <MessageCircle size={18} /> ENVIAR PELO WHATSAPP
+            </a>
+          )}
+
           <button 
             onClick={() => window.location.reload()}
             className="text-[#B98389] font-bold text-sm hover:text-[#A76D74] transition-colors uppercase tracking-wide"

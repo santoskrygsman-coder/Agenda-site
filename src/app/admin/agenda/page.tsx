@@ -20,20 +20,19 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className="space-y-6 animate-in fade-in pb-24 sm:pb-0 font-sans text-[#3A3335]">
-      <div className="flex justify-between items-center bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8]">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8]">
         <h1 className="text-xl font-bold text-[#3A3335] flex items-center gap-2">
           <CalendarIcon className="text-[#B98389]" size={22} /> Agenda Diária
         </h1>
         
-        {/* Simples seletor de data - num app real seria um componente de DatePicker */}
-        <form className="flex gap-2">
+        <form className="flex gap-2 w-full sm:w-auto">
           <input 
             type="date" 
             name="date"
             defaultValue={dateParam}
-            className="p-2 border border-[#F3E8E8] rounded-xl text-sm outline-none focus:border-[#B98389] text-[#5A5052] bg-[#FCFAFA]"
+            className="flex-1 sm:flex-none p-3 sm:p-2 border border-[#F3E8E8] rounded-xl text-sm outline-none focus:border-[#B98389] text-[#5A5052] bg-[#FCFAFA]"
           />
-          <button type="submit" className="bg-[#B98389] text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-[#A76D74] transition-colors">
+          <button type="submit" className="bg-[#B98389] text-white px-5 sm:px-4 py-3 sm:py-2 rounded-xl text-sm font-bold shadow-md hover:bg-[#A76D74] transition-colors whitespace-nowrap">
             Buscar
           </button>
         </form>

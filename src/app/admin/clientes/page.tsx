@@ -53,7 +53,7 @@ export default async function ClientesPage() {
                     <span className={`font-bold ml-1 ${
                       lastAppt.status === 'CONFIRMED' ? 'text-[#5A7A66]' :
                       lastAppt.status === 'PENDING' ? 'text-[#D4A373]' : 'text-[#8B7E7F]'
-                    }`}>({lastAppt.status === 'PENDING' ? 'PENDENTE' : lastAppt.status === 'CONFIRMED' ? 'CONFIRMADO' : lastAppt.status})</span>
+                    }`}>({lastAppt.status === 'PENDING' ? 'PENDENTE' : lastAppt.status === 'CONFIRMED' ? 'CONFIRMADO' : lastAppt.status === 'CANCELLED' ? 'CANCELADO' : 'RECUSADO'})</span>
                   </div>
                 )}
               </div>

@@ -168,30 +168,36 @@ export default function SettingsManager() {
           <div className="flex flex-col sm:flex-row gap-4 items-end">
             <div className="flex-1 w-full space-y-1.5">
               <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide flex justify-between">
-                <span>Número do WhatsApp</span>
-                {settings.whatsapp && <span className="text-[#5A7A66] flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#5A7A66]"></div> Configurado</span>}
+                <span>Número do WhatsApp da Profissional (Sistema)</span>
+                {settings.whatsappSystemNumber && <span className="text-[#5A7A66] flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#5A7A66]"></div> WhatsApp Configurado</span>}
               </label>
               <div className="flex gap-2">
                 <input 
                   type="text" 
-                  value={settings.whatsapp || ''} 
+                  value={settings.whatsappSystemNumber || ''} 
                   onChange={e => {
                     let v = e.target.value.replace(/\D/g, '');
                     if (v.length > 11) v = v.substring(0, 11);
                     if (v.length > 2) v = `(${v.substring(0,2)}) ${v.substring(2)}`;
                     if (v.length > 10) v = `${v.substring(0,10)}-${v.substring(10)}`;
                     else if (v.length > 9) v = `${v.substring(0,9)}-${v.substring(9)}`;
-                    setSettings({...settings, whatsapp: v});
+                    setSettings({...settings, whatsappSystemNumber: v});
                   }} 
                   placeholder="(11) 99999-9999" 
                   className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-medium transition-all" 
                 />
-                <button onClick={handleTestWhatsApp} className="px-5 py-3.5 bg-[#E9F0EC] text-[#5A7A66] font-bold text-sm tracking-wide rounded-xl hover:bg-[#D5E2D9] transition-all whitespace-nowrap active:scale-[0.98]"><Smartphone size={18} className="inline mr-2"/> TESTAR</button>
+                <button onClick={() => {
+                  if (!settings?.whatsappSystemNumber) return alert("Configure seu número de WhatsApp primeiro!");
+                  const phone = settings.whatsappSystemNumber.replace(/\D/g, '');
+                  const finalPhone = (phone.length === 10 || phone.length === 11) ? `55${phone}` : phone;
+                  const msg = encodeURIComponent("Olá! Este é um teste do sistema de agendamentos. 💕");
+                  window.open(`https://wa.me/${finalPhone}?text=${msg}`, '_blank');
+                }} className="px-5 py-3.5 bg-[#E9F0EC] text-[#5A7A66] font-bold text-sm tracking-wide rounded-xl hover:bg-[#D5E2D9] transition-all whitespace-nowrap active:scale-[0.98]"><Smartphone size={18} className="inline mr-2"/> TESTAR</button>
               </div>
             </div>
           </div>
 
-          <p className="text-xs text-[#8B7E7F] font-medium bg-[#FCFAFA] border border-[#F3E8E8] p-4 rounded-xl leading-relaxed">✦ Atualmente as mensagens são abertas no WhatsApp da cliente ou no seu WhatsApp para envio manual (sem custos de API).</p>
+          <p className="text-xs text-[#8B7E7F] font-medium bg-[#FCFAFA] border border-[#F3E8E8] p-4 rounded-xl leading-relaxed">✦ O sistema utilizará este número para que as clientes enviem as solicitações para você (via wa.me).</p>
 
           <div className="space-y-5 pt-6 border-t border-[#F3E8E8]">
             <div>

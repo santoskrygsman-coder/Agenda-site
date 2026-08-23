@@ -34,31 +34,48 @@ export default async function AdminDashboard() {
     take: 5
   });
 
+  const hour = new Date().getHours();
+  let greeting = "Boa noite";
+  if (hour < 12) greeting = "Bom dia";
+  else if (hour < 18) greeting = "Boa tarde";
+
+  const firstName = settings?.professionalName?.split(" ")[0] || "Profissional";
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-24 sm:pb-0 font-sans text-[#3A3335]">
       
+      <div className="mb-2">
+        <h1 className="text-2xl font-bold text-[#3A3335]">{greeting}, {firstName}!</h1>
+        <p className="text-[#8B7E7F] text-sm mt-1">Aqui está o resumo da sua agenda.</p>
+      </div>
+
       {/* Cards de Métrica */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] flex flex-col items-center justify-center text-center">
-          <Clock className="text-[#D4A373] mb-3" size={26} />
-          <span className="text-3xl font-bold text-[#3A3335]">{pending.length}</span>
+        <div className="bg-white p-4 sm:p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] flex flex-col items-center justify-center text-center">
+          <Clock className="text-[#D4A373] mb-2 sm:mb-3" size={24} />
+          <span className="text-2xl sm:text-3xl font-bold text-[#3A3335]">{pending.length}</span>
           <span className="text-[10px] text-[#8B7E7F] font-bold uppercase tracking-widest mt-1">Pendentes</span>
         </div>
-        <div className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] flex flex-col items-center justify-center text-center">
-          <CalendarIcon className="text-[#5A7A66] mb-3" size={26} />
-          <span className="text-3xl font-bold text-[#3A3335]">{todaysAppointments.length}</span>
+        <div className="bg-white p-4 sm:p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] flex flex-col items-center justify-center text-center">
+          <CalendarIcon className="text-[#5A7A66] mb-2 sm:mb-3" size={24} />
+          <span className="text-2xl sm:text-3xl font-bold text-[#3A3335]">{todaysAppointments.length}</span>
           <span className="text-[10px] text-[#8B7E7F] font-bold uppercase tracking-widest mt-1">Hoje</span>
         </div>
-        <div className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] flex flex-col items-center justify-center text-center">
-          <Users className="text-[#B98389] mb-3" size={26} />
-          <span className="text-3xl font-bold text-[#3A3335]">{totalClients}</span>
+        <div className="bg-white p-4 sm:p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] flex flex-col items-center justify-center text-center">
+          <Users className="text-[#B98389] mb-2 sm:mb-3" size={24} />
+          <span className="text-2xl sm:text-3xl font-bold text-[#3A3335]">{totalClients}</span>
           <span className="text-[10px] text-[#8B7E7F] font-bold uppercase tracking-widest mt-1">Clientes</span>
+        </div>
+        <div className="bg-white p-4 sm:p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[#F3E8E8] flex flex-col items-center justify-center text-center">
+          <div className="text-[#A76D74] mb-2 sm:mb-3 font-bold flex items-center justify-center"><Clock size={24} /></div>
+          <span className="text-xl sm:text-2xl font-bold text-[#3A3335] mt-1">{todaysAppointments[0]?.startTime || "-"}</span>
+          <span className="text-[10px] text-[#8B7E7F] font-bold uppercase tracking-widest mt-1">Próximo</span>
         </div>
       </div>
 
       <section>
         <h2 className="text-lg font-bold text-[#3A3335] mb-5 flex items-center gap-2">
-          <span className="text-[#D4A373] text-sm">✦</span>
+          <span>🔔</span>
           Solicitações Pendentes
         </h2>
         

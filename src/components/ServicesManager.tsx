@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Scissors, Edit2, Trash2, Check, X, Plus } from "lucide-react";
+import { Scissors, Edit2, Trash2, Check, X, Plus, MoreVertical } from "lucide-react";
 
 export default function ServicesManager({ initialServices }: { initialServices: any[] }) {
   const [services, setServices] = useState(initialServices);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   
   const [editForm, setEditForm] = useState({
     name: "",
@@ -158,46 +159,93 @@ export default function ServicesManager({ initialServices }: { initialServices: 
                 </div>
               </div>
             ) : (
-              <div className="flex justify-between items-start">
-                <div>
-                  <h4 className="font-bold text-[#3A3335] text-lg tracking-tight">{service.name}</h4>
-                  <div className="flex gap-3 mt-2 items-center">
-                    <span className="text-xs font-bold tracking-wider text-[#A76D74] bg-[#FFF5F5] px-2.5 py-1 rounded-full">R$ {service.price.toFixed(2)}</span>
-                    <span className="text-xs font-bold tracking-wider text-[#8B7E7F] bg-[#FCFAFA] border border-[#F3E8E8] px-2.5 py-1 rounded-full">{service.duration} MIN</span>
-                    {!service.active && (
-                      <span className="text-xs font-bold text-[#8B7E7F] bg-[#F3E8E8] px-2.5 py-1 rounded-full uppercase tracking-wider">INATIVO</span>
+                <div className="flex justify-between items-start">
+                  <div className="flex-1 pr-4">
+                    <h4 className="font-bold text-[#3A3335] text-lg tracking-tight">{service.name}</h4>
+                    <div className="flex flex-wrap gap-2 mt-2 items-center">
+                      <span className="text-xs font-bold tracking-wider text-[#A76D74] bg-[#FFF5F5] px-2.5 py-1 rounded-full">R$ {service.price.toFixed(2)}</span>
+                      <span className="text-xs font-bold tracking-wider text-[#8B7E7F] bg-[#FCFAFA] border border-[#F3E8E8] px-2.5 py-1 rounded-full">{service.duration} MIN</span>
+                      {!service.active && (
+                        <span className="text-xs font-bold text-[#8B7E7F] bg-[#F3E8E8] px-2.5 py-1 rounded-full uppercase tracking-wider">INATIVO</span>
+                      )}
+                    </div>
+                    {service.description && (
+                      <p className="text-sm text-[#8B7E7F] mt-3 font-medium">{service.description}</p>
                     )}
                   </div>
-                  {service.description && (
-                    <p className="text-sm text-[#8B7E7F] mt-3 font-medium">{service.description}</p>
-                  )}
+                  
+                  {/* Desktop Buttons */}
+                  <div className="hidden sm:flex gap-2">
+                    <button 
+                      onClick={async () => {
+                        const res = await fetch(`/api/services/${service.id}`, {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ ...service, active: !service.active })
+                        });
+                        if (res.ok) {
+                          const updated = await res.json();
+                          setServices(prev => prev.map(s => s.id === service.id ? updated : s));
+                        }
+                      }} 
+                      className={`w-14 h-14 rounded-2xl transition-all flex flex-col justify-center items-center gap-1 active:scale-95 ${service.active ? 'text-[#D4A373] bg-[#FFF9F2] hover:bg-[#FFEADA]' : 'text-[#5A7A66] bg-[#F0F7F4] hover:bg-[#D5E2D9]'}`}
+                      title={service.active ? "Desativar" : "Ativar"}
+                    >
+                      <Check size={18} className={!service.active ? "opacity-100" : "opacity-30"} />
+                    </button>
+                    <button onClick={() => handleEdit(service)} className="w-14 h-14 text-[#5A5052] bg-[#FCFAFA] border border-[#F3E8E8] rounded-2xl hover:bg-[#F3E8E8] transition-all flex justify-center items-center active:scale-95">
+                      <Edit2 size={18} />
+                    </button>
+                    <button onClick={() => handleDelete(service.id)} className="w-14 h-14 text-[#A76D74] bg-[#FFF5F5] rounded-2xl hover:bg-[#F3E8E8] transition-all flex justify-center items-center active:scale-95">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+
+                  {/* Mobile Dropdown */}
+                  <div className="sm:hidden relative">
+                    <button 
+                      onClick={() => setOpenMenuId(openMenuId === service.id ? null : service.id)}
+                      className="w-12 h-12 flex justify-center items-center rounded-xl text-[#8B7E7F] hover:bg-[#FCFAFA] active:bg-[#F3E8E8] transition-colors"
+                    >
+                      <MoreVertical size={20} />
+                    </button>
+
+                    {openMenuId === service.id && (
+                      <div className="absolute right-0 top-12 mt-1 w-48 bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#F3E8E8] overflow-hidden z-10 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                        <button 
+                          onClick={() => { handleEdit(service); setOpenMenuId(null); }}
+                          className="flex items-center gap-3 px-4 py-3.5 text-sm font-bold text-[#5A5052] hover:bg-[#FCFAFA] transition-colors text-left border-b border-[#F3E8E8]"
+                        >
+                          <Edit2 size={16} /> Editar
+                        </button>
+                        <button 
+                          onClick={async () => {
+                            const res = await fetch(`/api/services/${service.id}`, {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ ...service, active: !service.active })
+                            });
+                            if (res.ok) {
+                              const updated = await res.json();
+                              setServices(prev => prev.map(s => s.id === service.id ? updated : s));
+                            }
+                            setOpenMenuId(null);
+                          }}
+                          className={`flex items-center gap-3 px-4 py-3.5 text-sm font-bold transition-colors text-left border-b border-[#F3E8E8] ${service.active ? 'text-[#D4A373] hover:bg-[#FFF9F2]' : 'text-[#5A7A66] hover:bg-[#F0F7F4]'}`}
+                        >
+                          <Check size={16} className={!service.active ? "opacity-100" : "opacity-30"} /> 
+                          {service.active ? "Desativar" : "Ativar"}
+                        </button>
+                        <button 
+                          onClick={() => { handleDelete(service.id); setOpenMenuId(null); }}
+                          className="flex items-center gap-3 px-4 py-3.5 text-sm font-bold text-[#A76D74] hover:bg-[#FFF5F5] transition-colors text-left"
+                        >
+                          <Trash2 size={16} /> Excluir
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex gap-2 ml-2 sm:ml-auto">
-                  <button 
-                    onClick={async () => {
-                      const res = await fetch(`/api/services/${service.id}`, {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ ...service, active: !service.active })
-                      });
-                      if (res.ok) {
-                        const updated = await res.json();
-                        setServices(prev => prev.map(s => s.id === service.id ? updated : s));
-                      }
-                    }} 
-                    className={`w-14 h-14 rounded-2xl transition-all flex flex-col justify-center items-center gap-1 active:scale-95 ${service.active ? 'text-[#D4A373] bg-[#FFF9F2] hover:bg-[#FFEADA]' : 'text-[#5A7A66] bg-[#F0F7F4] hover:bg-[#D5E2D9]'}`}
-                    title={service.active ? "Desativar" : "Ativar"}
-                  >
-                    <Check size={18} className={!service.active ? "opacity-100" : "opacity-30"} />
-                  </button>
-                  <button onClick={() => handleEdit(service)} className="w-14 h-14 text-[#5A5052] bg-[#FCFAFA] border border-[#F3E8E8] rounded-2xl hover:bg-[#F3E8E8] transition-all flex justify-center items-center active:scale-95">
-                    <Edit2 size={18} />
-                  </button>
-                  <button onClick={() => handleDelete(service.id)} className="w-14 h-14 text-[#A76D74] bg-[#FFF5F5] rounded-2xl hover:bg-[#F3E8E8] transition-all flex justify-center items-center active:scale-95">
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
             )}
           </div>
         ))}

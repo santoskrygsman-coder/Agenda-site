@@ -3,7 +3,7 @@ import { CalendarDays, Settings, Users, Home as HomeIcon, Scissors, Sparkles } f
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col min-h-screen bg-[#FCFAFA] pb-16 sm:pb-0 sm:flex-row font-sans text-[#3A3335]">
+    <div className="flex flex-col min-h-screen bg-[#FCFAFA] pb-[100px] sm:pb-0 sm:flex-row font-sans text-[#3A3335] max-w-[100vw] overflow-x-hidden">
       {/* Sidebar Desktop */}
       <aside className="hidden sm:flex flex-col w-64 bg-white border-r border-[#F3E8E8] shadow-[4px_0_24px_rgba(0,0,0,0.01)]">
         <div className="p-6 border-b border-[#F3E8E8] flex items-center gap-2">
@@ -29,7 +29,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </main>
 
       {/* Bottom Navigation Mobile */}
-      <nav className="sm:hidden fixed bottom-0 w-full bg-white/90 backdrop-blur-md border-t border-[#F3E8E8] flex justify-around items-center h-[72px] px-2 z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.02)] pb-safe">
+      <nav 
+        className="sm:hidden fixed bottom-0 w-full bg-white/95 backdrop-blur-md border-t border-[#F3E8E8] flex justify-around items-center px-1 z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.02)]"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
         <NavItem href="/admin" icon={<HomeIcon size={22} />} text="Início" mobile />
         <NavItem href="/admin/agenda" icon={<CalendarDays size={22} />} text="Agenda" mobile />
         <NavItem href="/admin/clientes" icon={<Users size={22} />} text="Clientes" mobile />
@@ -42,9 +45,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
 function NavItem({ href, icon, text, mobile = false }: { href: string; icon: React.ReactNode; text: string; mobile?: boolean }) {
   return (
-    <Link href={href} className={`flex ${mobile ? 'flex-col justify-center items-center text-[10px] w-16 h-full' : 'items-center gap-3 px-4 py-3 rounded-xl text-sm w-full'} text-[#8B7E7F] hover:text-[#B98389] hover:bg-[#FFF5F5] transition-all duration-300 active:scale-95`}>
+    <Link 
+      href={href} 
+      className={`flex ${mobile ? 'flex-col justify-center items-center text-[10px] min-w-[64px] min-h-[72px] h-[72px]' : 'items-center gap-3 px-4 py-3 rounded-xl text-sm w-full'} text-[#8B7E7F] hover:text-[#B98389] hover:bg-[#FFF5F5] transition-all duration-300 active:scale-95`}
+    >
       <div className={`${mobile ? 'mb-1' : ''}`}>{icon}</div>
-      <span className={mobile ? 'font-semibold tracking-wide uppercase' : 'font-semibold'}>{text}</span>
+      <span className={mobile ? 'font-semibold tracking-wide uppercase text-center w-full' : 'font-semibold'}>{text}</span>
     </Link>
   );
 }

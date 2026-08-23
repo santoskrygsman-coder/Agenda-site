@@ -7,9 +7,18 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
     const { id } = await params;
     const body = await request.json();
 
+    const dataToUpdate: any = {};
+    if (body.status !== undefined) dataToUpdate.status = body.status;
+    if (body.whatsappStatus !== undefined) {
+      dataToUpdate.whatsappStatus = body.whatsappStatus;
+      if (body.whatsappStatus === "OPENED") {
+        dataToUpdate.whatsappOpenedAt = new Date();
+      }
+    }
+
     const appointment = await prisma.appointment.update({
       where: { id },
-      data: { status: body.status }
+      data: dataToUpdate
     });
 
     return NextResponse.json(appointment);

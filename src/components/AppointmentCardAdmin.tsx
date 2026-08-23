@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { MessageCircle, Check, X, Clock, Trash2 } from "lucide-react";
-import { WhatsAppService } from "@/lib/whatsapp";
+import { WhatsAppService } from "@/lib/whatsappService";
 
 import { useRouter } from "next/navigation";
 
@@ -39,17 +39,36 @@ export default function AppointmentCardAdmin({ appointment, settings }: { appoin
     }
   };
 
+  const handleWhatsAppClick = async () => {
+    if (appointment.whatsappStatus !== "OPENED" && appointment.whatsappStatus !== "SENT_MANUALLY") {
+      try {
+        await fetch(`/api/appointments/${appointment.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ whatsappStatus: "OPENED" })
+        });
+        router.refresh();
+      } catch (e) {
+        // Silencioso, não interfere na abertura do WhatsApp
+      }
+    }
+  };
+
   const getWhatsAppLink = () => {
     const { client, service, startTime } = appointment;
     
     if (status === "PENDING") {
-      return WhatsAppService.getPendingAdminLink(client.name, client.phone, dateFormatted, startTime, service.name, service.price, settings?.msgNewRequest || "");
+      // Abre o chat em branco com o cliente apenas para conversar
+      return WhatsAppService.generateWhatsAppLink(client.phone, "");
     } else if (status === "CONFIRMED") {
-      return WhatsAppService.getConfirmedLink(client.name, client.phone, dateFormatted, startTime, service.name, service.price, settings?.msgConfirmed || "");
+      const msg = WhatsAppService.getConfirmedMessage(client.name, service.name, dateFormatted, startTime, service.price);
+      return WhatsAppService.generateWhatsAppLink(client.phone, msg);
     } else if (status === "REJECTED") {
-      return WhatsAppService.getRejectedLink(client.name, client.phone, dateFormatted, startTime, settings?.msgRejected || "");
+      const msg = WhatsAppService.getRejectedMessage(client.name);
+      return WhatsAppService.generateWhatsAppLink(client.phone, msg);
     } else if (status === "CANCELLED") {
-      return WhatsAppService.getRejectedLink(client.name, client.phone, dateFormatted, startTime, settings?.msgRejected || "");
+      const msg = WhatsAppService.getCancelledMessage(client.name, service.name, dateFormatted, startTime);
+      return WhatsAppService.generateWhatsAppLink(client.phone, msg);
     }
     return "#";
   };
@@ -96,14 +115,14 @@ export default function AppointmentCardAdmin({ appointment, settings }: { appoin
             <button 
               disabled={loading}
               onClick={() => handleUpdate("CONFIRMED")}
-              className="flex-1 min-w-[120px] bg-[#5A7A66] hover:bg-[#4A6454] text-white font-bold text-sm tracking-wide py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 shadow-md shadow-[#5A7A66]/20"
+              className="flex-1 min-w-[120px] bg-[#5A7A66] hover:bg-[#4A6454] text-white font-bold text-sm tracking-wide py-4 sm:py-3 rounded-2xl sm:rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 shadow-md shadow-[#5A7A66]/20"
             >
               <Check size={18} /> CONFIRMAR
             </button>
             <button 
               disabled={loading}
               onClick={() => handleUpdate("REJECTED")}
-              className="flex-1 min-w-[120px] bg-[#FFF5F5] hover:bg-[#F3E8E8] text-[#A76D74] border border-[#F3E8E8] font-bold text-sm tracking-wide py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+              className="flex-1 min-w-[120px] bg-[#FFF5F5] hover:bg-[#F3E8E8] text-[#A76D74] border border-[#F3E8E8] font-bold text-sm tracking-wide py-4 sm:py-3 rounded-2xl sm:rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
             >
               <X size={18} /> RECUSAR
             </button>
@@ -114,7 +133,7 @@ export default function AppointmentCardAdmin({ appointment, settings }: { appoin
           <button 
             disabled={loading}
             onClick={() => handleUpdate("CANCELLED")}
-            className="flex-1 min-w-[120px] bg-[#F3E8E8] hover:bg-[#E8DCDC] text-[#5A5052] font-bold text-sm tracking-wide py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+            className="flex-1 min-w-[120px] bg-[#F3E8E8] hover:bg-[#E8DCDC] text-[#5A5052] font-bold text-sm tracking-wide py-4 sm:py-3 rounded-2xl sm:rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
           >
             <Trash2 size={18} /> CANCELAR
           </button>
@@ -124,12 +143,21 @@ export default function AppointmentCardAdmin({ appointment, settings }: { appoin
           href={getWhatsAppLink()} 
           target="_blank" 
           rel="noreferrer"
-          className="w-full bg-[#25D366] hover:bg-[#1ebd5a] text-white font-bold text-sm tracking-wide py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md shadow-[#25D366]/20"
+          onClick={handleWhatsAppClick}
+          className="w-full bg-[#25D366] hover:bg-[#1ebd5a] text-white font-bold text-sm tracking-wide py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md shadow-[#25D366]/20"
         >
           <MessageCircle size={18} /> 
-          {status === "PENDING" ? "FALAR NO WHATSAPP" : 
-           status === "CONFIRMED" ? "ENVIAR CONFIRMAÇÃO" : "AVISAR CLIENTE"}
+          {status === "PENDING" ? "WHATSAPP" : 
+           status === "CONFIRMED" ? "AVISAR CLIENTE" : "AVISAR CLIENTE"}
         </a>
+        
+        {appointment.whatsappStatus !== "NOT_SENT" && status !== "PENDING" && (
+          <div className="w-full text-center mt-1">
+            <span className="text-[10px] text-[#5A7A66] font-bold uppercase tracking-widest flex items-center justify-center gap-1">
+              <Check size={10} /> WhatsApp Aberto
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
