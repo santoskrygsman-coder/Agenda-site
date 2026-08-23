@@ -319,70 +319,63 @@ export default function BookingWizard({ services, settings }: { services: any[],
 
       {/* STEP 5: SUCCESS */}
       {step === 5 && (
-        <div className="text-center animate-in zoom-in duration-700 py-10 px-4">
+        <div className="text-center animate-in zoom-in duration-700 py-10 px-2 sm:px-4">
           <div className="w-20 h-20 bg-[#FFF5F5] text-[#B98389] rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-white shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
             <CheckCircle size={36} />
           </div>
           <h2 className="text-2xl font-bold text-[#3A3335] mb-2 flex justify-center items-center gap-2">
-            <span className="text-[#D4A373] text-sm">✦</span>
-            Solicitação enviada!
-            <Heart size={18} className="text-[#B98389] inline ml-1" />
+            💕 Solicitação enviada!
           </h2>
-          <p className="text-[#8B7E7F] mb-8 text-sm leading-relaxed max-w-[260px] mx-auto">
-            Seu pedido foi enviado com sucesso. Em breve você receberá a confirmação pelo WhatsApp.
+          <p className="text-[#8B7E7F] mb-8 text-sm leading-relaxed max-w-[260px] mx-auto font-medium">
+            Seu pedido de agendamento foi registrado.
           </p>
           
-          <div className="bg-white border border-[#F3E8E8] p-5 rounded-2xl text-left mb-8 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-            <div className="space-y-3">
-              <div className="flex justify-between items-center pb-3 border-b border-[#F3E8E8]">
-                <span className="text-[#8B7E7F] text-xs uppercase font-bold tracking-wide">Status</span>
-                <span className="text-[#D4A373] text-xs font-bold bg-[#FFF9F2] px-2.5 py-1 rounded-full flex items-center gap-1">
-                  <Clock size={12} /> PENDENTE
-                </span>
-              </div>
-              <p className="text-sm text-[#5A5052] flex items-center gap-3">
-                <CalendarIcon size={16} className="text-[#B98389]" /> {format(selectedDate!, "dd/MM/yyyy")} às {selectedTime}
+          <div className="bg-white border border-[#F3E8E8] p-5 rounded-3xl text-left mb-8 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+            <p className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide mb-1">Procedimento:</p>
+            <p className="text-lg font-bold text-[#3A3335] mb-4">{selectedService.name}</p>
+
+            <div className="flex items-center gap-4 text-[#5A5052] font-medium">
+              <p className="flex items-center gap-2">
+                <span className="text-xl">📅</span> {format(selectedDate!, "dd/MM/yyyy")}
               </p>
-              <p className="text-sm text-[#5A5052] flex items-center gap-3">
-                <Sparkles size={16} className="text-[#B98389]" /> {selectedService.name}
+              <p className="flex items-center gap-2">
+                <span className="text-xl">⏰</span> {selectedTime}
               </p>
             </div>
           </div>
 
+          <p className="text-[#3A3335] font-bold text-sm mb-4">
+            Agora envie sua solicitação diretamente para a designer pelo WhatsApp.
+          </p>
+
           {settings?.whatsappSystemNumber && (
-            <a 
-              href={(() => {
-                const msg = `💕 NOVO AGENDAMENTO
-
-Olá! Você recebeu uma nova solicitação de agendamento. 💕
-
-👤 Cliente: ${formData.name}
-✨ Procedimento: ${selectedService.name}
-📅 Data: ${format(selectedDate!, "dd/MM/yyyy")}
-⏰ Horário: ${selectedTime}
-💰 Valor: R$ ${selectedService.price.toFixed(2).replace('.', ',')}
-📝 Observação: ${formData.notes || "Nenhuma"}
-
-🟡 Status: Aguardando confirmação.
-
-Acesse o painel para confirmar ou recusar o horário.`;
-                const cleanedPhone = settings.whatsappSystemNumber.replace(/\D/g, "");
-                const finalPhone = (cleanedPhone.length === 10 || cleanedPhone.length === 11) ? `55${cleanedPhone}` : cleanedPhone;
-                return `https://wa.me/${finalPhone}?text=${encodeURIComponent(msg)}`;
-              })()}
-              target="_blank"
-              rel="noreferrer"
-              className="w-full bg-[#25D366] text-white font-bold text-sm tracking-wide p-4 rounded-2xl mb-4 hover:bg-[#1ebd5a] transition-all shadow-lg shadow-[#25D366]/20 flex justify-center items-center gap-2"
-            >
-              <MessageCircle size={18} /> ENVIAR PELO WHATSAPP
-            </a>
+            <>
+              <a 
+                href={(() => {
+                  const obsText = formData.notes ? `\n\n📝 Observação: ${formData.notes}` : "";
+                  const msg = `Olá! 💕 Tudo bem?\n\nMeu nome é ${formData.name} e gostaria de solicitar um agendamento.\n\n✨ Procedimento: ${selectedService.name}\n📅 Data desejada: ${format(selectedDate!, "dd/MM/yyyy")}\n⏰ Horário: ${selectedTime}\n\n💰 Valor: R$ ${selectedService.price.toFixed(2).replace('.', ',')}${obsText}\n\nFiz a solicitação pelo seu sistema de agendamento e estou entrando em contato para confirmar o horário. 💕\n\nAguardo sua confirmação! 😊`;
+                  
+                  const cleanedPhone = settings.whatsappSystemNumber.replace(/\D/g, "");
+                  const finalPhone = (cleanedPhone.length === 10 || cleanedPhone.length === 11) ? `55${cleanedPhone}` : cleanedPhone;
+                  return `https://wa.me/${finalPhone}?text=${encodeURIComponent(msg)}`;
+                })()}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full bg-[#25D366] text-white font-bold text-sm tracking-wide p-4 rounded-2xl mb-3 hover:bg-[#1ebd5a] transition-all shadow-lg shadow-[#25D366]/20 flex justify-center items-center gap-2 active:scale-[0.98]"
+              >
+                <MessageCircle size={18} /> ENVIAR PELO WHATSAPP
+              </a>
+              <p className="text-xs text-[#8B7E7F] font-medium mb-8">
+                Você será direcionada ao WhatsApp com uma mensagem pronta. Basta tocar em enviar.
+              </p>
+            </>
           )}
 
           <button 
             onClick={() => window.location.reload()}
-            className="text-[#B98389] font-bold text-sm hover:text-[#A76D74] transition-colors uppercase tracking-wide"
+            className="text-[#B98389] font-bold text-xs hover:text-[#A76D74] transition-colors uppercase tracking-widest border border-[#F3E8E8] bg-white px-6 py-3 rounded-full shadow-sm"
           >
-            Fazer novo agendamento
+            Voltar para o início
           </button>
         </div>
       )}

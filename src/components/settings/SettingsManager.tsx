@@ -190,7 +190,7 @@ export default function SettingsManager() {
                   if (!settings?.whatsappSystemNumber) return alert("Configure seu número de WhatsApp primeiro!");
                   const phone = settings.whatsappSystemNumber.replace(/\D/g, '');
                   const finalPhone = (phone.length === 10 || phone.length === 11) ? `55${phone}` : phone;
-                  const msg = encodeURIComponent("Olá! Este é um teste do sistema de agendamentos. 💕");
+                  const msg = encodeURIComponent("Olá! 💕 Esta é uma mensagem de teste do sistema de agendamentos.");
                   window.open(`https://wa.me/${finalPhone}?text=${msg}`, '_blank');
                 }} className="px-5 py-3.5 bg-[#E9F0EC] text-[#5A7A66] font-bold text-sm tracking-wide rounded-xl hover:bg-[#D5E2D9] transition-all whitespace-nowrap active:scale-[0.98]"><Smartphone size={18} className="inline mr-2"/> TESTAR</button>
               </div>

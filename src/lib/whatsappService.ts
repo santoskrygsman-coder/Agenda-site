@@ -57,44 +57,25 @@ Acesse o painel para confirmar ou recusar o horário.`;
     clientName: string,
     serviceName: string,
     date: string,
-    time: string,
-    price: number
+    time: string
   ): string {
-    return `💕 AGENDAMENTO CONFIRMADO
-
-Olá, ${clientName}! 💕
-
-Seu horário foi confirmado.
-
-✨ Procedimento: ${serviceName}
-📅 Data: ${date}
-⏰ Horário: ${time}
-💰 Valor: R$ ${price.toFixed(2).replace('.', ',')}
-
-Esperamos você! 💕`;
+    const firstName = clientName.split(" ")[0] || clientName;
+    return `Olá, ${firstName}! 💕 Seu agendamento foi confirmado!\n\n✨ Procedimento: ${serviceName}\n📅 Data: ${date}\n⏰ Horário: ${time}\n\nEstamos te esperando! 💕\n\nAté lá! 😊`;
   }
 
   /**
    * Mensagem gerada para a DESIGNER enviar para a CLIENTE após RECUSAR o agendamento.
    */
-  static getRejectedMessage(clientName: string): string {
-    return `Olá, ${clientName}! 💕
-
-Infelizmente não foi possível confirmar o horário solicitado.
-
-Entre em contato conosco para escolher outro horário.
-
-Podemos verificar outro horário disponível para você. 💕`;
+  static getRejectedMessage(clientName: string, date: string, time: string): string {
+    const firstName = clientName.split(" ")[0] || clientName;
+    return `Olá, ${firstName}! 💕\n\nInfelizmente não conseguimos confirmar o horário solicitado para ${date} às ${time}.\n\nEntre em contato conosco para verificarmos outro horário disponível para você. 💕`;
   }
 
   /**
    * Mensagem gerada para a DESIGNER enviar para a CLIENTE após CANCELAR um agendamento já confirmado.
    */
   static getCancelledMessage(clientName: string, serviceName: string, date: string, time: string): string {
-    return `Olá, ${clientName}. 💕
-
-Seu agendamento para ${serviceName} no dia ${date} às ${time} precisou ser cancelado.
-
-Qualquer dúvida, estamos à disposição.`;
+    const firstName = clientName.split(" ")[0] || clientName;
+    return `Olá, ${firstName}. 💕\n\nSeu agendamento para ${serviceName} no dia ${date} às ${time} precisou ser cancelado.\n\nQualquer dúvida, estamos à disposição.`;
   }
 }

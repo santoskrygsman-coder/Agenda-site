@@ -61,10 +61,10 @@ export default function AppointmentCardAdmin({ appointment, settings }: { appoin
       // Abre o chat em branco com o cliente apenas para conversar
       return WhatsAppService.generateWhatsAppLink(client.phone, "");
     } else if (status === "CONFIRMED") {
-      const msg = WhatsAppService.getConfirmedMessage(client.name, service.name, dateFormatted, startTime, service.price);
+      const msg = WhatsAppService.getConfirmedMessage(client.name, service.name, dateFormatted, startTime);
       return WhatsAppService.generateWhatsAppLink(client.phone, msg);
     } else if (status === "REJECTED") {
-      const msg = WhatsAppService.getRejectedMessage(client.name);
+      const msg = WhatsAppService.getRejectedMessage(client.name, dateFormatted, startTime);
       return WhatsAppService.generateWhatsAppLink(client.phone, msg);
     } else if (status === "CANCELLED") {
       const msg = WhatsAppService.getCancelledMessage(client.name, service.name, dateFormatted, startTime);
