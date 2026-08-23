@@ -34,20 +34,8 @@ export class WhatsAppService {
     price: number,
     notes?: string
   ): string {
-    return `💕 NOVO AGENDAMENTO
-
-Olá! Você recebeu uma nova solicitação de agendamento. 💕
-
-👤 Cliente: ${clientName}
-✨ Procedimento: ${serviceName}
-📅 Data: ${date}
-⏰ Horário: ${time}
-💰 Valor: R$ ${price.toFixed(2).replace('.', ',')}
-📝 Observação: ${notes || "Nenhuma"}
-
-🟡 Status: Aguardando confirmação.
-
-Acesse o painel para confirmar ou recusar o horário.`;
+    const obsText = notes ? `\n📝 Observação:\n${notes}\n` : "";
+    return `✨ NOVA SOLICITAÇÃO DE AGENDAMENTO\n\nOlá! Gostaria de solicitar um agendamento. 💕\n\n👤 Cliente: ${clientName}\n✨ Procedimento: ${serviceName}\n📅 Data: ${date}\n⏰ Horário: ${time}\n💰 Valor: R$ ${price.toFixed(2).replace('.', ',')}\n${obsText}\nGostaria de confirmar a disponibilidade desse horário. 💗`;
   }
 
   /**
@@ -57,18 +45,19 @@ Acesse o painel para confirmar ou recusar o horário.`;
     clientName: string,
     serviceName: string,
     date: string,
-    time: string
+    time: string,
+    price: number
   ): string {
     const firstName = clientName.split(" ")[0] || clientName;
-    return `Olá, ${firstName}! 💕 Seu agendamento foi confirmado!\n\n✨ Procedimento: ${serviceName}\n📅 Data: ${date}\n⏰ Horário: ${time}\n\nEstamos te esperando! 💕\n\nAté lá! 😊`;
+    return `✨ AGENDAMENTO CONFIRMADO!\n\nOlá, ${firstName}! 💕\n\nSeu horário foi confirmado:\n\n✨ Procedimento: ${serviceName}\n📅 Data: ${date}\n⏰ Horário: ${time}\n💰 Valor: R$ ${price.toFixed(2).replace('.', ',')}\n\nTe esperamos! 💗`;
   }
 
   /**
    * Mensagem gerada para a DESIGNER enviar para a CLIENTE após RECUSAR o agendamento.
    */
-  static getRejectedMessage(clientName: string, date: string, time: string): string {
+  static getRejectedMessage(clientName: string, serviceName: string, date: string, time: string): string {
     const firstName = clientName.split(" ")[0] || clientName;
-    return `Olá, ${firstName}! 💕\n\nInfelizmente não conseguimos confirmar o horário solicitado para ${date} às ${time}.\n\nEntre em contato conosco para verificarmos outro horário disponível para você. 💕`;
+    return `Olá, ${firstName}! 💕\n\nInfelizmente não conseguimos confirmar o horário solicitado:\n\n✨ Procedimento: ${serviceName}\n📅 Data: ${date}\n⏰ Horário: ${time}\n\nEntre em contato conosco pelo WhatsApp para escolher outro horário. 💗`;
   }
 
   /**
@@ -76,6 +65,6 @@ Acesse o painel para confirmar ou recusar o horário.`;
    */
   static getCancelledMessage(clientName: string, serviceName: string, date: string, time: string): string {
     const firstName = clientName.split(" ")[0] || clientName;
-    return `Olá, ${firstName}. 💕\n\nSeu agendamento para ${serviceName} no dia ${date} às ${time} precisou ser cancelado.\n\nQualquer dúvida, estamos à disposição.`;
+    return `Olá, ${firstName}. 💕\n\nSeu agendamento para ${serviceName} no dia ${date} às ${time} precisou ser cancelado.\n\nQualquer dúvida, estamos à disposição. 💗`;
   }
 }

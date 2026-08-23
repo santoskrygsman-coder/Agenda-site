@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { MessageCircle, Check, X, Clock, Trash2 } from "lucide-react";
+import { MessageCircle, Check, X, Clock, Trash2, CheckCheck } from "lucide-react";
 import { WhatsAppService } from "@/lib/whatsappService";
 
 import { useRouter } from "next/navigation";
@@ -19,6 +19,12 @@ export default function AppointmentCardAdmin({ appointment, settings }: { appoin
   const handleUpdate = async (newStatus: string) => {
     if (newStatus === "CANCELLED") {
       if (!confirm("Tem certeza que deseja cancelar este agendamento?")) return;
+    }
+    if (newStatus === "REJECTED") {
+      if (!confirm("Tem certeza que deseja recusar este agendamento?")) return;
+    }
+    if (newStatus === "COMPLETED") {
+      if (!confirm("Marcar este agendamento como concluído?")) return;
     }
 
     setLoading(true);
@@ -58,13 +64,12 @@ export default function AppointmentCardAdmin({ appointment, settings }: { appoin
     const { client, service, startTime } = appointment;
     
     if (status === "PENDING") {
-      // Abre o chat em branco com o cliente apenas para conversar
       return WhatsAppService.generateWhatsAppLink(client.phone, "");
     } else if (status === "CONFIRMED") {
-      const msg = WhatsAppService.getConfirmedMessage(client.name, service.name, dateFormatted, startTime);
+      const msg = WhatsAppService.getConfirmedMessage(client.name, service.name, dateFormatted, startTime, service.price);
       return WhatsAppService.generateWhatsAppLink(client.phone, msg);
     } else if (status === "REJECTED") {
-      const msg = WhatsAppService.getRejectedMessage(client.name, dateFormatted, startTime);
+      const msg = WhatsAppService.getRejectedMessage(client.name, service.name, dateFormatted, startTime);
       return WhatsAppService.generateWhatsAppLink(client.phone, msg);
     } else if (status === "CANCELLED") {
       const msg = WhatsAppService.getCancelledMessage(client.name, service.name, dateFormatted, startTime);
@@ -74,7 +79,7 @@ export default function AppointmentCardAdmin({ appointment, settings }: { appoin
   };
 
   return (
-    <div className={`bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border flex flex-col gap-5 transition-all ${status === 'CANCELLED' || status === 'REJECTED' ? 'opacity-60 border-[#F3E8E8]' : 'border-[#F3E8E8]'}`}>
+    <div className={`bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border flex flex-col gap-5 transition-all ${status === 'CANCELLED' || status === 'REJECTED' || status === 'COMPLETED' ? 'opacity-60 border-[#F3E8E8]' : 'border-[#F3E8E8]'}`}>
       <div className="flex justify-between items-start">
         <div>
           <h3 className="font-bold text-[#3A3335] text-lg tracking-tight">{appointment.client.name}</h3>
@@ -86,9 +91,10 @@ export default function AppointmentCardAdmin({ appointment, settings }: { appoin
           status === "PENDING" ? "bg-[#FFF9F2] text-[#D4A373]" :
           status === "CONFIRMED" ? "bg-[#F0F7F4] text-[#5A7A66]" :
           status === "CANCELLED" ? "bg-[#F3E8E8] text-[#8B7E7F]" :
+          status === "COMPLETED" ? "bg-[#F0F7F4] text-[#5A7A66]" :
           "bg-[#FFF5F5] text-[#A76D74]"
         }`}>
-          {status === "PENDING" ? "PENDENTE" : status === "CONFIRMED" ? "CONFIRMADO" : status === "CANCELLED" ? "CANCELADO" : "RECUSADO"}
+          {status === "PENDING" ? "PENDENTE" : status === "CONFIRMED" ? "CONFIRMADO" : status === "CANCELLED" ? "CANCELADO" : status === "COMPLETED" ? "CONCLUÍDO" : "RECUSADO"}
         </div>
       </div>
 
@@ -130,13 +136,22 @@ export default function AppointmentCardAdmin({ appointment, settings }: { appoin
         )}
 
         {status === "CONFIRMED" && (
-          <button 
-            disabled={loading}
-            onClick={() => handleUpdate("CANCELLED")}
-            className="flex-1 min-w-[120px] bg-[#F3E8E8] hover:bg-[#E8DCDC] text-[#5A5052] font-bold text-sm tracking-wide py-4 sm:py-3 rounded-2xl sm:rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
-          >
-            <Trash2 size={18} /> CANCELAR
-          </button>
+          <>
+            <button 
+              disabled={loading}
+              onClick={() => handleUpdate("COMPLETED")}
+              className="flex-1 min-w-[120px] bg-[#B98389] hover:bg-[#A76D74] text-white font-bold text-sm tracking-wide py-4 sm:py-3 rounded-2xl sm:rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 shadow-md shadow-[#B98389]/20"
+            >
+              <CheckCheck size={18} /> CONCLUIR
+            </button>
+            <button 
+              disabled={loading}
+              onClick={() => handleUpdate("CANCELLED")}
+              className="flex-1 min-w-[120px] bg-[#F3E8E8] hover:bg-[#E8DCDC] text-[#5A5052] font-bold text-sm tracking-wide py-4 sm:py-3 rounded-2xl sm:rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+              <Trash2 size={18} /> CANCELAR
+            </button>
+          </>
         )}
         
         <a 

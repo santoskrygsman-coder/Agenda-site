@@ -4,6 +4,7 @@ import { useState } from "react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isBefore, startOfDay, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Clock, CalendarIcon, CheckCircle, ArrowLeft, Heart, Sparkles, MessageCircle } from "lucide-react";
+import { WhatsAppService } from "@/lib/whatsappService";
 
 export default function BookingWizard({ services, settings }: { services: any[], settings: any }) {
   const [step, setStep] = useState(1);
@@ -326,8 +327,11 @@ export default function BookingWizard({ services, settings }: { services: any[],
           <h2 className="text-2xl font-bold text-[#3A3335] mb-2 flex justify-center items-center gap-2">
             💕 Solicitação enviada!
           </h2>
-          <p className="text-[#8B7E7F] mb-8 text-sm leading-relaxed max-w-[260px] mx-auto font-medium">
+          <p className="text-[#8B7E7F] mb-1 text-sm leading-relaxed max-w-[260px] mx-auto font-medium">
             Seu pedido de agendamento foi registrado.
+          </p>
+          <p className="text-[#A76D74] mb-8 text-xs font-bold leading-relaxed max-w-[260px] mx-auto uppercase tracking-wide">
+            O horário ainda depende da confirmação da profissional.
           </p>
           
           <div className="bg-white border border-[#F3E8E8] p-5 rounded-3xl text-left mb-8 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
@@ -336,28 +340,28 @@ export default function BookingWizard({ services, settings }: { services: any[],
 
             <div className="flex items-center gap-4 text-[#5A5052] font-medium">
               <p className="flex items-center gap-2">
-                <span className="text-xl">📅</span> {format(selectedDate!, "dd/MM/yyyy")}
+                <CalendarIcon size={18} className="text-[#B98389]" /> {format(selectedDate!, "dd/MM/yyyy")}
               </p>
               <p className="flex items-center gap-2">
-                <span className="text-xl">⏰</span> {selectedTime}
+                <Clock size={18} className="text-[#B98389]" /> {selectedTime}
               </p>
             </div>
           </div>
-
-          <p className="text-[#3A3335] font-bold text-sm mb-4">
-            Agora envie sua solicitação diretamente para a designer pelo WhatsApp.
-          </p>
 
           {(() => {
             const whatsappTarget = settings?.whatsappSystemNumber || settings?.whatsapp;
             if (!whatsappTarget) return null;
             
-            const obsText = formData.notes ? `\n\n📝 Observação: ${formData.notes}` : "";
-            const msg = `Olá! 💕 Tudo bem?\n\nMeu nome é ${formData.name} e gostaria de solicitar um agendamento.\n\n✨ Procedimento: ${selectedService.name}\n📅 Data desejada: ${format(selectedDate!, "dd/MM/yyyy")}\n⏰ Horário: ${selectedTime}\n\n💰 Valor: R$ ${selectedService.price.toFixed(2).replace('.', ',')}${obsText}\n\nFiz a solicitação pelo seu sistema de agendamento e estou entrando em contato para confirmar o horário. 💕\n\nAguardo sua confirmação! 😊`;
+            const msg = WhatsAppService.getNewRequestMessage(
+              formData.name,
+              selectedService.name,
+              format(selectedDate!, "dd/MM/yyyy"),
+              selectedTime || "",
+              selectedService.price,
+              formData.notes
+            );
             
-            const cleanedPhone = whatsappTarget.replace(/\D/g, "");
-            const finalPhone = (cleanedPhone.length === 10 || cleanedPhone.length === 11) ? `55${cleanedPhone}` : cleanedPhone;
-            const href = `https://wa.me/${finalPhone}?text=${encodeURIComponent(msg)}`;
+            const href = WhatsAppService.generateWhatsAppLink(whatsappTarget, msg);
 
             return (
               <>
