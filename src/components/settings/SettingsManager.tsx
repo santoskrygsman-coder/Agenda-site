@@ -169,26 +169,27 @@ export default function SettingsManager() {
             <div className="flex-1 w-full space-y-1.5">
               <label className="text-xs font-bold text-[#8B7E7F] uppercase tracking-wide flex justify-between">
                 <span>Número do WhatsApp da Profissional (Sistema)</span>
-                {settings.whatsappSystemNumber && <span className="text-[#5A7A66] flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#5A7A66]"></div> WhatsApp Configurado</span>}
+                { (settings.whatsappSystemNumber || settings.whatsapp) && <span className="text-[#5A7A66] flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#5A7A66]"></div> WhatsApp Configurado</span>}
               </label>
               <div className="flex gap-2">
                 <input 
                   type="text" 
-                  value={settings.whatsappSystemNumber || ''} 
+                  value={settings.whatsappSystemNumber || settings.whatsapp || ''} 
                   onChange={e => {
                     let v = e.target.value.replace(/\D/g, '');
                     if (v.length > 11) v = v.substring(0, 11);
                     if (v.length > 2) v = `(${v.substring(0,2)}) ${v.substring(2)}`;
                     if (v.length > 10) v = `${v.substring(0,10)}-${v.substring(10)}`;
                     else if (v.length > 9) v = `${v.substring(0,9)}-${v.substring(9)}`;
-                    setSettings({...settings, whatsappSystemNumber: v});
-                  }} 
+                    setSettings({...settings, whatsappSystemNumber: v, whatsapp: v}); // salva em ambos para retrocompatibilidade
+                  }}  
                   placeholder="(11) 99999-9999" 
                   className="w-full p-3.5 bg-[#FCFAFA] border border-[#F3E8E8] rounded-xl focus:border-[#B98389] focus:ring-1 focus:ring-[#B98389] outline-none text-[#3A3335] font-medium transition-all" 
                 />
                 <button onClick={() => {
-                  if (!settings?.whatsappSystemNumber) return alert("Configure seu número de WhatsApp primeiro!");
-                  const phone = settings.whatsappSystemNumber.replace(/\D/g, '');
+                  const targetPhone = settings?.whatsappSystemNumber || settings?.whatsapp;
+                  if (!targetPhone) return alert("Configure seu número de WhatsApp primeiro!");
+                  const phone = targetPhone.replace(/\D/g, '');
                   const finalPhone = (phone.length === 10 || phone.length === 11) ? `55${phone}` : phone;
                   const msg = encodeURIComponent("Olá! 💕 Esta é uma mensagem de teste do sistema de agendamentos.");
                   window.open(`https://wa.me/${finalPhone}?text=${msg}`, '_blank');

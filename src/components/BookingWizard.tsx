@@ -348,28 +348,33 @@ export default function BookingWizard({ services, settings }: { services: any[],
             Agora envie sua solicitação diretamente para a designer pelo WhatsApp.
           </p>
 
-          {settings?.whatsappSystemNumber && (
-            <>
-              <a 
-                href={(() => {
-                  const obsText = formData.notes ? `\n\n📝 Observação: ${formData.notes}` : "";
-                  const msg = `Olá! 💕 Tudo bem?\n\nMeu nome é ${formData.name} e gostaria de solicitar um agendamento.\n\n✨ Procedimento: ${selectedService.name}\n📅 Data desejada: ${format(selectedDate!, "dd/MM/yyyy")}\n⏰ Horário: ${selectedTime}\n\n💰 Valor: R$ ${selectedService.price.toFixed(2).replace('.', ',')}${obsText}\n\nFiz a solicitação pelo seu sistema de agendamento e estou entrando em contato para confirmar o horário. 💕\n\nAguardo sua confirmação! 😊`;
-                  
-                  const cleanedPhone = settings.whatsappSystemNumber.replace(/\D/g, "");
-                  const finalPhone = (cleanedPhone.length === 10 || cleanedPhone.length === 11) ? `55${cleanedPhone}` : cleanedPhone;
-                  return `https://wa.me/${finalPhone}?text=${encodeURIComponent(msg)}`;
-                })()}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full bg-[#25D366] text-white font-bold text-sm tracking-wide p-4 rounded-2xl mb-3 hover:bg-[#1ebd5a] transition-all shadow-lg shadow-[#25D366]/20 flex justify-center items-center gap-2 active:scale-[0.98]"
-              >
-                <MessageCircle size={18} /> ENVIAR PELO WHATSAPP
-              </a>
-              <p className="text-xs text-[#8B7E7F] font-medium mb-8">
-                Você será direcionada ao WhatsApp com uma mensagem pronta. Basta tocar em enviar.
-              </p>
-            </>
-          )}
+          {(() => {
+            const whatsappTarget = settings?.whatsappSystemNumber || settings?.whatsapp;
+            if (!whatsappTarget) return null;
+            
+            const obsText = formData.notes ? `\n\n📝 Observação: ${formData.notes}` : "";
+            const msg = `Olá! 💕 Tudo bem?\n\nMeu nome é ${formData.name} e gostaria de solicitar um agendamento.\n\n✨ Procedimento: ${selectedService.name}\n📅 Data desejada: ${format(selectedDate!, "dd/MM/yyyy")}\n⏰ Horário: ${selectedTime}\n\n💰 Valor: R$ ${selectedService.price.toFixed(2).replace('.', ',')}${obsText}\n\nFiz a solicitação pelo seu sistema de agendamento e estou entrando em contato para confirmar o horário. 💕\n\nAguardo sua confirmação! 😊`;
+            
+            const cleanedPhone = whatsappTarget.replace(/\D/g, "");
+            const finalPhone = (cleanedPhone.length === 10 || cleanedPhone.length === 11) ? `55${cleanedPhone}` : cleanedPhone;
+            const href = `https://wa.me/${finalPhone}?text=${encodeURIComponent(msg)}`;
+
+            return (
+              <>
+                <a 
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full bg-[#25D366] text-white font-bold text-sm tracking-wide p-4 rounded-2xl mb-3 hover:bg-[#1ebd5a] transition-all shadow-lg shadow-[#25D366]/20 flex justify-center items-center gap-2 active:scale-[0.98]"
+                >
+                  <MessageCircle size={18} /> ENVIAR PELO WHATSAPP
+                </a>
+                <p className="text-xs text-[#8B7E7F] font-medium mb-8">
+                  Você será direcionada ao WhatsApp com uma mensagem pronta. Basta tocar em enviar.
+                </p>
+              </>
+            );
+          })()}
 
           <button 
             onClick={() => window.location.reload()}
