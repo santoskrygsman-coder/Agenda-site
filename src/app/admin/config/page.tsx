@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import SettingsManager from "@/components/settings/SettingsManager";
 import BlockedDatesManager from "@/components/settings/BlockedDatesManager";
 import GalleryManager from "@/components/settings/GalleryManager";

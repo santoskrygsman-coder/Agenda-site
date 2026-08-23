@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import ServicesManager from "@/components/ServicesManager";
 import { prisma } from "@/lib/prisma";
 
