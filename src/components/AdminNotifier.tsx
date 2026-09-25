@@ -44,9 +44,27 @@ export default function AdminNotifier() {
 
   const requestPermission = async () => {
     try {
+      if (!("Notification" in window)) {
+        alert("O seu navegador atual não suporta notificações.");
+        setShowPrompt(false);
+        return;
+      }
+      
       const perm = await Notification.requestPermission();
-      if (perm === "granted") setShowPrompt(false);
-    } catch(e){}
+      
+      if (perm === "granted") {
+        alert("✨ Avisos ativados com sucesso! Deixe o painel aberto (mesmo em segundo plano) para receber alertas de novos agendamentos.");
+        setShowPrompt(false);
+      } else if (perm === "denied") {
+        alert("Você bloqueou as notificações. Caso queira ativar depois, será necessário mudar nas configurações do seu navegador.");
+        setShowPrompt(false);
+      } else {
+        setShowPrompt(false);
+      }
+    } catch(e) {
+      alert("Erro ao pedir permissão. Se você usa iPhone, você precisa 'Adicionar à Tela de Início' primeiro para poder receber notificações!");
+      setShowPrompt(false);
+    }
   };
 
   if (!showPrompt) return null;
