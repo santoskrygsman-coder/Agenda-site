@@ -16,7 +16,6 @@ export const metadata: Metadata = {
   title: "Agendamento Estética",
   description: "Agende seu horário conosco",
   manifest: "/manifest.json",
-  themeColor: "#fbcfe8",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -25,6 +24,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  themeColor: "#B98389",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -38,6 +38,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
+      <head>
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            if ('serviceWorker' in navigator) {
+              window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(
+                  function(registration) {},
+                  function(err) {}
+                );
+              });
+            }
+          `
+        }} />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-pink-50 min-h-screen text-gray-900`}>
         {children}
       </body>
