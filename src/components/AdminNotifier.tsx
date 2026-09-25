@@ -24,12 +24,13 @@ export default function AdminNotifier() {
           setLastCount(prev => {
             if (prev !== null && data.count > prev) {
               if ("Notification" in window && Notification.permission === "granted") {
-                new Notification("✨ Nova Solicitação de Agendamento!", {
+                const options: any = {
                   body: "Você tem um novo pedido de horário aguardando confirmação no painel.",
                   icon: "/icon-192.png",
                   badge: "/icon-192.png",
                   vibrate: [200, 100, 200, 100, 200]
-                });
+                };
+                new Notification("✨ Nova Solicitação de Agendamento!", options);
               }
             }
             return data.count;
