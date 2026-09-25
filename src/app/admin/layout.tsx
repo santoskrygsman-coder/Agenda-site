@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { CalendarDays, Settings, Users, Home as HomeIcon, Scissors, Sparkles, Menu } from "lucide-react";
+import AdminNotifier from "@/components/AdminNotifier";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col min-h-screen bg-[#FCFAFA] pb-[100px] sm:pb-0 sm:flex-row font-sans text-[#3A3335] max-w-[100vw] overflow-x-hidden">
+      <AdminNotifier />
       {/* Sidebar Desktop */}
       <aside className="hidden sm:flex flex-col w-64 bg-white border-r border-[#F3E8E8] shadow-[4px_0_24px_rgba(0,0,0,0.01)]">
         <div className="p-6 border-b border-[#F3E8E8] flex items-center gap-2">
