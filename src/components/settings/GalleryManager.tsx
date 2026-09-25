@@ -77,14 +77,15 @@ export default function GalleryManager() {
 
   const handleAddInstagram = async () => {
     if (images.length >= 50) return alert("Você atingiu o limite da galeria.");
-    const url = prompt("Cole o link direto do vídeo (.mp4) ou link do Reels do Instagram/TikTok:");
+    const url = prompt("Cole o link direto do vídeo (.mp4, .mov, .webm) ou link do Reels do Instagram/TikTok:");
     if (!url) return;
     
     // Convert short link / reel format to embed if possible
     let finalUrl = url;
     let type = "INSTAGRAM";
 
-    if (url.trim().toLowerCase().endsWith(".mp4")) {
+    const lowerUrl = url.trim().toLowerCase();
+    if (lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".mov") || lowerUrl.endsWith(".webm")) {
       finalUrl = url;
       type = "VIDEO";
     } else if (url.includes("instagram.com")) {

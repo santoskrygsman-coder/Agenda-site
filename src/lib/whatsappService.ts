@@ -1,4 +1,4 @@
-export class WhatsAppService {
+﻿export class WhatsAppService {
   static formatPhone(phone: string): string {
     const cleaned = phone.replace(/\D/g, "");
     if (!cleaned) return "";
@@ -24,29 +24,29 @@ export class WhatsAppService {
     requiresDeposit: boolean,
     notes?: string
   ): string {
-    const obsText = notes ? `\n📝 Observação:\n${notes}\n` : "";
+    const obsText = notes ? `\nðŸ“ *ObservaÃ§Ã£o:*\n_${notes}_\n` : "";
     const priceFormatted = price.toFixed(2).replace('.', ',');
     
     if (requiresDeposit) {
-      return `💕 Olá! Tudo bem?\n\nMeu nome é ${clientName} e gostaria de solicitar um agendamento.\n\n✨ Procedimento: ${serviceName}\n📅 Data: ${date}\n⏰ Horário: ${time}\n💰 Valor: R$ ${priceFormatted}\n${obsText}\n🟡 STATUS: AGUARDANDO CONFIRMAÇÃO DO AGENDAMENTO\n\n💳 Vi que este procedimento necessita de um sinal para confirmação do horário.\n\nGostaria de saber quais são as formas de pagamento disponíveis para realizar o sinal.\n\nPoderia verificar a disponibilidade e me orientar sobre o sinal para confirmar meu horário? 💗\n\nAguardo sua confirmação! 😊`;
+      return `âœ¨ *NOVA SOLICITAÃ‡ÃƒO DE AGENDAMENTO* âœ¨\n\nOii, tudo bem? ðŸ’•\nMeu nome Ã© *${clientName}* e acabei de solicitar um horÃ¡rio pelo site!\n\nðŸŒ¸ *Procedimento:* ${serviceName}\nðŸ“… *Data:* ${date}\nâ° *HorÃ¡rio:* ${time}\nðŸ’° *Valor Total:* R$ ${priceFormatted}\n${obsText}\nâš ï¸ *STATUS:* Aguardando sua confirmaÃ§Ã£o\n\nðŸ’³ Vi no site que esse procedimento exige um sinal para garantir a vaga.\nComo faÃ§o o pagamento? Gostaria muito de confirmar esse horÃ¡rio! ðŸ¥°\n\nAguardo seu retorno! ðŸ’–`;
     } else {
-      return `💕 Olá! Tudo bem?\n\nMeu nome é ${clientName} e gostaria de solicitar um agendamento.\n\n✨ Procedimento: ${serviceName}\n📅 Data: ${date}\n⏰ Horário: ${time}\n💰 Valor: R$ ${priceFormatted}\n${obsText}\n🟡 STATUS: AGUARDANDO CONFIRMAÇÃO DO AGENDAMENTO\n\nGostaria de confirmar se esse horário está disponível.\n\nAguardo sua confirmação. 💗\n\nObrigada! 😊`;
+      return `âœ¨ *NOVA SOLICITAÃ‡ÃƒO DE AGENDAMENTO* âœ¨\n\nOii, tudo bem? ðŸ’•\nMeu nome Ã© *${clientName}* e acabei de solicitar um horÃ¡rio pelo site!\n\nðŸŒ¸ *Procedimento:* ${serviceName}\nðŸ“… *Data:* ${date}\nâ° *HorÃ¡rio:* ${time}\nðŸ’° *Valor Total:* R$ ${priceFormatted}\n${obsText}\nâš ï¸ *STATUS:* Aguardando sua confirmaÃ§Ã£o\n\nGostaria muito de saber se esse horÃ¡rio estÃ¡ disponÃ­vel para mim! ðŸ¥°\n\nAguardo seu retorno! ðŸ’–`;
     }
   }
 
   static getConfirmedMessage(clientName: string, serviceName: string, date: string, time: string, price: number): string {
     const firstName = clientName.split(" ")[0] || clientName;
-    return `✨ AGENDAMENTO CONFIRMADO!\n\nOlá, ${firstName}! 💕\n\nSeu horário foi confirmado:\n\n✨ Procedimento: ${serviceName}\n📅 Data: ${date}\n⏰ Horário: ${time}\n💰 Valor: R$ ${price.toFixed(2).replace('.', ',')}\n\nTe esperamos! 💗`;
+    return `âœ¨ AGENDAMENTO CONFIRMADO!\n\nOlÃ¡, ${firstName}! ðŸ’•\n\nSeu horÃ¡rio foi confirmado:\n\nâœ¨ Procedimento: ${serviceName}\nðŸ“… Data: ${date}\nâ° HorÃ¡rio: ${time}\nðŸ’° Valor: R$ ${price.toFixed(2).replace('.', ',')}\n\nTe esperamos! ðŸ’—`;
   }
 
   static getRejectedMessage(clientName: string, serviceName: string, date: string, time: string): string {
     const firstName = clientName.split(" ")[0] || clientName;
-    return `Olá, ${firstName}! 💕\n\nInfelizmente não conseguimos confirmar o horário solicitado:\n\n✨ Procedimento: ${serviceName}\n📅 Data: ${date}\n⏰ Horário: ${time}\n\nEntre em contato conosco pelo WhatsApp para escolher outro horário. 💗`;
+    return `OlÃ¡, ${firstName}! ðŸ’•\n\nInfelizmente nÃ£o conseguimos confirmar o horÃ¡rio solicitado:\n\nâœ¨ Procedimento: ${serviceName}\nðŸ“… Data: ${date}\nâ° HorÃ¡rio: ${time}\n\nEntre em contato conosco pelo WhatsApp para escolher outro horÃ¡rio. ðŸ’—`;
   }
 
   static getCancelledMessage(clientName: string, serviceName: string, date: string, time: string): string {
     const firstName = clientName.split(" ")[0] || clientName;
-    return `Olá, ${firstName}. 💕\n\nSeu agendamento para ${serviceName} no dia ${date} às ${time} precisou ser cancelado.\n\nQualquer dúvida, estamos à disposição. 💗`;
+    return `OlÃ¡, ${firstName}. ðŸ’•\n\nSeu agendamento para ${serviceName} no dia ${date} Ã s ${time} precisou ser cancelado.\n\nQualquer dÃºvida, estamos Ã  disposiÃ§Ã£o. ðŸ’—`;
   }
 
   static getReminderMessage(template: string, clientName: string, serviceName: string, date: string, time: string, price: number, professionalName: string = "a profissional"): string {

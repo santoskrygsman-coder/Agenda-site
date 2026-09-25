@@ -19,6 +19,7 @@ export default function BookingWizard({ services, settings }: { services: any[],
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [hasClickedWhatsapp, setHasClickedWhatsapp] = useState(false);
 
   // --- Step 1: Services ---
   const handleServiceSelect = (service: any) => {
@@ -371,13 +372,13 @@ export default function BookingWizard({ services, settings }: { services: any[],
       {step === 5 && (
         <div className="text-center animate-in zoom-in duration-700 py-6 px-2 sm:px-4">
           <div className="w-20 h-20 bg-[#FFF5F5] text-[#B98389] rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-white shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
-            <CheckCircle size={36} />
+            <MessageCircle size={36} />
           </div>
           <h2 className="text-2xl font-bold text-[#3A3335] mb-2 flex justify-center items-center gap-2">
-            💕 Solicitação enviada!
+            💕 Quase lá!
           </h2>
           <p className="text-[#8B7E7F] mb-6 text-sm leading-relaxed max-w-[280px] mx-auto font-medium">
-            Sua solicitação de agendamento foi registrada.
+            Seu horário foi pré-agendado. Para finalizar e garantir a vaga, você <b className="text-[#3A3335]">precisa</b> enviar a solicitação para o nosso WhatsApp.
           </p>
           
           <div className="bg-white border border-[#F3E8E8] p-5 rounded-3xl text-left mb-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] relative overflow-hidden">
@@ -437,20 +438,27 @@ export default function BookingWizard({ services, settings }: { services: any[],
                   href={href}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full bg-[#25D366] text-white font-bold text-sm tracking-wide p-4 rounded-2xl mb-3 hover:bg-[#1ebd5a] transition-all shadow-lg shadow-[#25D366]/20 flex justify-center items-center gap-2 active:scale-[0.98]"
+                  onClick={() => setHasClickedWhatsapp(true)}
+                  className={`w-full text-white font-bold text-sm tracking-wide p-4 rounded-2xl mb-3 transition-all flex justify-center items-center gap-2 active:scale-[0.98] ${
+                    hasClickedWhatsapp 
+                      ? 'bg-white border-2 border-[#25D366] text-[#25D366] hover:bg-[#F0FDF4]' 
+                      : 'bg-[#25D366] hover:bg-[#1ebd5a] shadow-lg shadow-[#25D366]/20 animate-pulse'
+                  }`}
                 >
-                  <MessageCircle size={18} /> ENVIAR PELO WHATSAPP
+                  <MessageCircle size={18} /> {hasClickedWhatsapp ? 'MENSAGEM ENVIADA' : 'ENVIAR E GARANTIR VAGA'}
                 </a>
               </>
             );
           })()}
 
-          <button 
-            onClick={() => window.location.reload()}
-            className="text-[#8B7E7F] font-bold text-xs hover:text-[#3A3335] transition-colors uppercase tracking-widest mt-4"
-          >
-            Voltar para o início
-          </button>
+          {hasClickedWhatsapp && (
+            <button 
+              onClick={() => window.location.reload()}
+              className="text-[#8B7E7F] font-bold text-xs hover:text-[#3A3335] transition-colors uppercase tracking-widest mt-4 animate-in fade-in"
+            >
+              Voltar para o início
+            </button>
+          )}
         </div>
       )}
     </div>
