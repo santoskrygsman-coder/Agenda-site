@@ -1,16 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
 
 export default function AdminNotifier() {
-  const { status } = useSession();
   const [, setLastCount] = useState<number | null>(null);
 
   const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
-    if (status !== "authenticated") return;
 
     if ("Notification" in window && Notification.permission === "default") {
       setShowPrompt(true);
@@ -43,7 +40,7 @@ export default function AdminNotifier() {
     checkPending();
     const interval = setInterval(checkPending, 10000);
     return () => clearInterval(interval);
-  }, [status]);
+  }, []);
 
   const requestPermission = async () => {
     try {
@@ -52,7 +49,7 @@ export default function AdminNotifier() {
     } catch(e){}
   };
 
-  if (!showPrompt || status !== "authenticated") return null;
+  if (!showPrompt) return null;
 
   return (
     <div className="bg-[#FFF9F2] border-b border-[#F3E8E8] p-3 px-5 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
