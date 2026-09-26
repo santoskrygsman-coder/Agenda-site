@@ -52,8 +52,16 @@ export default function RootLayout({
           `
         }} />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-pink-50 min-h-screen text-gray-900`}>
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#FCFAFA] min-h-screen text-gray-900 flex flex-col items-center justify-center p-5`}>
+        <div className="bg-white p-10 rounded-[24px] shadow-[0_10px_30px_rgba(0,0,0,0.05)] max-w-md border border-[#F3E8E8] text-center">
+          <h1 className="text-[#A76D74] text-2xl font-bold mb-4">✨ Temporariamente Offline</h1>
+          <p className="text-[#8B7E7F] text-base leading-relaxed mb-2">
+            O sistema de agendamentos está passando por uma manutenção e foi temporariamente desativado.
+          </p>
+          <p className="text-[#8B7E7F] text-base leading-relaxed">
+            Voltaremos em breve! 💕
+          </p>
+        </div>
       </body>
     </html>
   );
