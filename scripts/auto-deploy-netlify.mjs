@@ -139,7 +139,7 @@ async function main() {
 
   // 4. Executar build e deploy em produção
   console.log("\n▶️  4/4 Executando build e deploy de produção no Netlify...");
-  run("npx netlify-cli deploy --build --prod");
+  run("npx netlify-cli deploy --build --prod --skip-functions-cache");
 
   console.log("\n==============================================================");
   console.log(`🎉 DEPLOY DE PRODUÇÃO CONCLUÍDO COM SUCESSO!`);
