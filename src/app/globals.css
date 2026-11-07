@@ -5,6 +5,8 @@
   --foreground: #2D1C18;
   --font-jakarta: "Plus Jakarta Sans", Arial, Helvetica, sans-serif;
   --font-playfair: "Playfair Display", Georgia, serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 @theme inline {
@@ -14,13 +16,35 @@
   --font-serif: var(--font-playfair), Georgia, serif;
 }
 
+html,
 body {
+  max-width: 100vw;
+  overflow-x: hidden;
   background: #EAE0D8;
   color: #2D1C18;
   font-family: var(--font-jakarta);
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .font-serif {
   font-family: var(--font-playfair);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.safe-top {
+  padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+}
+
+.safe-bottom {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 }

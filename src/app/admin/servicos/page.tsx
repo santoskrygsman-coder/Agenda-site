@@ -34,6 +34,7 @@ const IMAGE_OPTIONS = [
 export default function AdminServicesPage() {
   const {
     allServices,
+    refreshServices,
     toggleServiceActive,
     createOrUpdateService,
     deleteService,
@@ -54,6 +55,11 @@ export default function AdminServicesPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [feedbackMsg, setFeedbackMsg] = useState("");
+
+  React.useEffect(() => {
+    refreshServices(true);
+  }, [refreshServices]);
 
   // Modal de pré-visualização da lupa em HD dentro do admin
   const [previewZoomOpen, setPreviewZoomOpen] = useState(false);
@@ -186,6 +192,12 @@ export default function AdminServicesPage() {
       setErrorMsg(res.error || "Não foi possível salvar o serviço.");
     } else {
       setModalOpen(false);
+      setFeedbackMsg(
+        editingService
+          ? "Serviço atualizado com sucesso!"
+          : "Novo serviço cadastrado com sucesso!"
+      );
+      setTimeout(() => setFeedbackMsg(""), 3000);
     }
   };
 
@@ -198,6 +210,8 @@ export default function AdminServicesPage() {
       setErrorMsg(res.error || "Não foi possível excluir.");
     } else {
       setModalOpen(false);
+      setFeedbackMsg("Serviço excluído com sucesso!");
+      setTimeout(() => setFeedbackMsg(""), 2500);
     }
   };
 
@@ -220,6 +234,12 @@ export default function AdminServicesPage() {
           <strong className="text-[#2D1C18]">foto real em alta definição</strong>{" "}
           para a lupa da cliente.
         </p>
+
+        {feedbackMsg && (
+          <div className="mb-2.5 bg-[#D8EFDC] border border-[#BDE2C4] text-[#2E8540] text-[12px] font-semibold px-3 py-2 rounded-[12px] text-center">
+            {feedbackMsg}
+          </div>
+        )}
 
         <div className="space-y-2.5">
           {allServices.map((svc) => (
@@ -246,8 +266,8 @@ export default function AdminServicesPage() {
 
       {/* Modal de Cadastro / Edição de Serviço com Upload de Foto Real em HD */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#2D1C18]/50 p-3 overflow-y-auto">
-          <div className="w-full max-w-[390px] bg-[#F8F1EB] border border-[#E6D8CF] rounded-[22px] p-4 shadow-2xl my-auto max-h-[92dvh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#2D1C18]/50 p-2.5 min-[375px]:p-3 overflow-y-auto">
+          <div className="w-full max-w-[410px] bg-[#F8F1EB] border border-[#E6D8CF] rounded-[22px] p-4 shadow-2xl my-auto max-h-[90dvh] overflow-y-auto">
             <div className="flex items-center justify-between pb-2.5 border-b border-[#E6D8CF]">
               <h2 className="font-serif text-[18px] font-semibold text-[#2D1C18]">
                 {editingService ? "Editar serviço" : "Novo serviço"}
@@ -255,9 +275,10 @@ export default function AdminServicesPage() {
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="w-7 h-7 rounded-full bg-[#EADCD3] flex items-center justify-center text-[#2D1C18]"
+                aria-label="Fechar modal"
+                className="w-10 h-10 rounded-full bg-[#EADCD3] flex items-center justify-center text-[#2D1C18] active:scale-95 transition touch-manipulation"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
@@ -278,7 +299,8 @@ export default function AdminServicesPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ex: Volume brasileiro"
-                  className="w-full bg-[#FAF5F1] border border-[#E4D5CB] rounded-[12px] px-3 py-2 text-[13.5px] text-[#2D1C18] focus:outline-none focus:border-[#B87472]"
+                  enterKeyHint="next"
+                  className="w-full min-h-[46px] bg-[#FAF5F1] border border-[#E4D5CB] rounded-[12px] px-3 py-2.5 text-[14px] text-[#2D1C18] focus:outline-none focus:border-[#B87472]"
                 />
               </div>
 
@@ -291,7 +313,8 @@ export default function AdminServicesPage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Ex: Mais volume e definição"
-                  className="w-full bg-[#FAF5F1] border border-[#E4D5CB] rounded-[12px] px-3 py-2 text-[13.5px] text-[#2D1C18] focus:outline-none focus:border-[#B87472]"
+                  enterKeyHint="next"
+                  className="w-full min-h-[46px] bg-[#FAF5F1] border border-[#E4D5CB] rounded-[12px] px-3 py-2.5 text-[14px] text-[#2D1C18] focus:outline-none focus:border-[#B87472]"
                 />
               </div>
 
@@ -302,13 +325,15 @@ export default function AdminServicesPage() {
                   </label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     step="0.01"
                     min="0"
                     required
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
                     placeholder="150,00"
-                    className="w-full bg-[#FAF5F1] border border-[#E4D5CB] rounded-[12px] px-3 py-2 text-[13.5px] text-[#2D1C18] focus:outline-none focus:border-[#B87472]"
+                    enterKeyHint="done"
+                    className="w-full min-h-[46px] bg-[#FAF5F1] border border-[#E4D5CB] rounded-[12px] px-3 py-2.5 text-[14px] text-[#2D1C18] focus:outline-none focus:border-[#B87472]"
                   />
                 </div>
 
@@ -319,7 +344,7 @@ export default function AdminServicesPage() {
                   <select
                     value={durationMinutes}
                     onChange={(e) => setDurationMinutes(e.target.value)}
-                    className="w-full bg-[#FAF5F1] border border-[#E4D5CB] rounded-[12px] px-3 py-2 text-[13.5px] text-[#2D1C18] focus:outline-none focus:border-[#B87472]"
+                    className="w-full min-h-[46px] bg-[#FAF5F1] border border-[#E4D5CB] rounded-[12px] px-3 py-2.5 text-[14px] text-[#2D1C18] focus:outline-none focus:border-[#B87472]"
                   >
                     <option value="30">30min</option>
                     <option value="60">1h</option>
@@ -333,9 +358,9 @@ export default function AdminServicesPage() {
 
               {/* SEÇÃO DE FOTOGRAFIA REAL EM ALTA DEFINIÇÃO (HD) */}
               <div className="bg-[#FAF5F1] border border-[#E4D5CB] rounded-[16px] p-3 space-y-2.5">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
                   <label className="text-[12px] font-bold text-[#2D1C18] flex items-center gap-1.5">
-                    <Camera size={14} className="text-[#B87472]" />
+                    <Camera size={14} className="text-[#B87472] shrink-0" />
                     <span>Fotografia do procedimento (HD)</span>
                   </label>
                   <button
@@ -344,9 +369,9 @@ export default function AdminServicesPage() {
                       setPreviewMagnified(false);
                       setPreviewZoomOpen(true);
                     }}
-                    className="text-[11px] font-bold text-[#B87472] hover:text-[#9E5D5B] flex items-center gap-1 bg-[#F4E3DC] px-2 py-0.5 rounded-full"
+                    className="min-h-[32px] text-[11px] font-bold text-[#B87472] hover:text-[#9E5D5B] flex items-center gap-1 bg-[#F4E3DC] px-2.5 py-1 rounded-full touch-manipulation"
                   >
-                    <Search size={10.5} />
+                    <Search size={11} />
                     <span>Testar lupa HD</span>
                   </button>
                 </div>
@@ -392,9 +417,9 @@ export default function AdminServicesPage() {
                     type="button"
                     disabled={uploadingPhoto}
                     onClick={() => fileInputRef.current?.click()}
-                    className="bg-[#38231E] hover:bg-[#2D1C18] text-[#FAF3EE] rounded-[11px] py-2 px-2.5 text-[12px] font-semibold flex items-center justify-center gap-1.5 transition"
+                    className="min-h-[42px] bg-[#38231E] hover:bg-[#2D1C18] active:scale-[0.98] text-[#FAF3EE] rounded-[11px] py-2 px-2.5 text-[12px] font-semibold flex items-center justify-center gap-1.5 transition touch-manipulation"
                   >
-                    <Camera size={13.5} />
+                    <Camera size={14} className="shrink-0" />
                     <span>
                       {uploadingPhoto ? "Enviando..." : "Enviar foto real"}
                     </span>
@@ -404,9 +429,9 @@ export default function AdminServicesPage() {
                     type="button"
                     disabled={uploadingPhoto}
                     onClick={handlePastePhoto}
-                    className="bg-[#FFFDFB] hover:bg-[#F3E8E0] border border-[#D8C6BC] text-[#2D1C18] rounded-[11px] py-2 px-2.5 text-[12px] font-semibold flex items-center justify-center gap-1.5 transition"
+                    className="min-h-[42px] bg-[#FFFDFB] hover:bg-[#F3E8E0] active:scale-[0.98] border border-[#D8C6BC] text-[#2D1C18] rounded-[11px] py-2 px-2.5 text-[12px] font-semibold flex items-center justify-center gap-1.5 transition touch-manipulation"
                   >
-                    <ClipboardPaste size={13.5} className="text-[#6E5850]" />
+                    <ClipboardPaste size={14} className="text-[#6E5850] shrink-0" />
                     <span>Colar foto</span>
                   </button>
                 </div>
@@ -424,7 +449,7 @@ export default function AdminServicesPage() {
                         setUploadSuccess("");
                       }
                     }}
-                    className="w-full bg-[#F4EAE3] border border-[#E2D3C9] rounded-[10px] px-2.5 py-1.5 text-[12.5px] text-[#2D1C18] focus:outline-none focus:border-[#B87472]"
+                    className="w-full min-h-[42px] bg-[#F4EAE3] border border-[#E2D3C9] rounded-[10px] px-2.5 py-2 text-[12.5px] text-[#2D1C18] focus:outline-none focus:border-[#B87472]"
                   >
                     {isCustomUploadedPhoto && (
                       <option value="__custom__">
@@ -446,13 +471,13 @@ export default function AdminServicesPage() {
                     type="button"
                     onClick={handleDelete}
                     disabled={saving}
-                    className="px-3.5 py-3 rounded-[14px] bg-[#F3D8D8] text-[#B84A48] font-semibold text-[13px] flex items-center justify-center"
+                    className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-[14px] bg-[#F3D8D8] text-[#B84A48] font-semibold text-[13px] flex items-center justify-center active:scale-95 transition touch-manipulation"
                     aria-label="Excluir serviço"
                   >
-                    <Trash2 size={17} />
+                    <Trash2 size={18} />
                   </button>
                 )}
-                <PrimaryButton type="submit" variant="rose" className="flex-1">
+                <PrimaryButton type="submit" variant="rose" className="flex-1" disabled={saving}>
                   {saving ? "Salvando..." : "Salvar serviço"}
                 </PrimaryButton>
               </div>
@@ -464,14 +489,14 @@ export default function AdminServicesPage() {
       {/* Modal de Teste da Lupa HD para a Profissional */}
       {previewZoomOpen && (
         <div
-          className="fixed inset-0 z-[60] bg-[#2D1C18]/80 backdrop-blur-[3px] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[60] bg-[#2D1C18]/80 backdrop-blur-[3px] flex items-center justify-center p-3"
           onClick={() => setPreviewZoomOpen(false)}
         >
           <div
-            className="w-full max-w-[380px] bg-[#FAF5F1] border border-[#E5D4C9] rounded-[24px] overflow-hidden shadow-2xl"
+            className="w-full max-w-[390px] max-h-[90dvh] overflow-y-auto bg-[#FAF5F1] border border-[#E5D4C9] rounded-[24px] overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative w-full h-[320px] bg-[#EAD8CE] overflow-auto">
+            <div className="relative w-full h-[300px] min-[375px]:h-[320px] bg-[#EAD8CE] overflow-auto">
               <img
                 src={currentHdPreview}
                 alt={name || "Prévia HD"}
@@ -483,23 +508,23 @@ export default function AdminServicesPage() {
                 }`}
               />
               <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                <span className="bg-[#2D1C18]/75 text-[#FAF5F1] text-[10.5px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
+                <span className="bg-[#2D1C18]/75 text-[#FAF5F1] text-[10.5px] font-semibold px-2.5 py-1.5 rounded-full flex items-center gap-1">
                   <Sparkles size={11} className="text-[#E2B897]" />
                   <span>Visão da Cliente (HD)</span>
                 </span>
                 <button
                   type="button"
                   onClick={() => setPreviewMagnified((p) => !p)}
-                  className="bg-[#FAF5F1]/90 text-[#2D1C18] text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1"
+                  className="min-h-[34px] bg-[#FAF5F1]/95 text-[#2D1C18] text-[11.5px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 touch-manipulation"
                 >
                   {previewMagnified ? (
                     <>
-                      <ZoomOut size={12} className="text-[#B87472]" />
+                      <ZoomOut size={13} className="text-[#B87472]" />
                       <span>1x</span>
                     </>
                   ) : (
                     <>
-                      <ZoomIn size={12} className="text-[#B87472]" />
+                      <ZoomIn size={13} className="text-[#B87472]" />
                       <span>Zoom 2x</span>
                     </>
                   )}
@@ -508,9 +533,10 @@ export default function AdminServicesPage() {
               <button
                 type="button"
                 onClick={() => setPreviewZoomOpen(false)}
-                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#2D1C18]/75 text-[#FAF5F1] flex items-center justify-center"
+                aria-label="Fechar prévia"
+                className="absolute top-3 right-3 w-10 h-10 rounded-full bg-[#2D1C18]/80 text-[#FAF5F1] flex items-center justify-center active:scale-95 transition touch-manipulation"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
             <div className="p-4 text-center">

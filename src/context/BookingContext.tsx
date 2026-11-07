@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import {
   MOCK_SERVICES,
   ServiceItem,
@@ -30,7 +31,7 @@ interface StudioSettings {
 interface BookingContextType {
   services: ServiceItem[];
   allServices: ServiceItem[];
-  refreshServices: () => Promise<void>;
+  refreshServices: (includeAll?: boolean) => Promise<void>;
   toggleServiceActive: (id: string) => Promise<void>;
   createOrUpdateService: (payload: {
     id?: string;
@@ -77,7 +78,11 @@ interface BookingContextType {
     expiresAt?: string | null;
   }) => void;
   studioSettings: StudioSettings;
+  refreshSettings: () => Promise<void>;
   todayOpenStatus: string;
+  refreshWorkingHours: (
+    preloadedList?: Array<{ weekday: number; active: boolean; endTime: string }>
+  ) => Promise<void>;
   selectedAppointment: AppointmentItem | null;
   setSelectedAppointment: (apt: AppointmentItem | null) => void;
   isMenuOpen: boolean;
@@ -87,6 +92,7 @@ interface BookingContextType {
 const BookingContext = createContext<BookingContextType | undefined>(undefined);
 
 export function BookingProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const defaultBookingDate = getDefaultBookingDate();
   const [services, setServices] = useState<ServiceItem[]>(MOCK_SERVICES);
   const [allServices, setAllServices] = useState<ServiceItem[]>(MOCK_SERVICES);
@@ -155,6 +161,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
   const [selectedAppointment, setSelectedAppointment] =
     useState<AppointmentItem | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const [scheduleVersion, setScheduleVersion] = useState<number>(0);
 
   const selectedDate = `${selectedYear}-${String(selectedMonth).padStart(
     2,
@@ -167,15 +174,32 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
     services[0] ||
     MOCK_SERVICES[1];
 
-  const refreshServices = useCallback(async () => {
+  const refreshServices = useCallback(async (includeAll = false) => {
     try {
       const res = await fetch("/api/services");
+      let activeList: ServiceItem[] = [];
       if (res.ok) {
         const data: ServiceItem[] = await res.json();
         if (data.length > 0) {
+          activeList = data;
           setServices(data);
           setSelectedServiceId((prev) => {
             if (prev && data.some((s) => s.id === prev)) return prev;
+            if (prev) {
+              const slugWords = prev
+                .toLowerCase()
+                .replace(/[-_]/g, " ")
+                .split(/\s+/)
+                .filter((w) => w.length >= 3);
+              const matchedBySlug = data.find((s) => {
+                const sName = s.name
+                  .toLowerCase()
+                  .normalize("NFD")
+                  .replace(/[\u0300-\u036f]/g, "");
+                return slugWords.some((w) => sName.includes(w));
+              });
+              if (matchedBySlug) return matchedBySlug.id;
+            }
             const br = data.find((s) =>
               s.name.toLowerCase().includes("brasileiro")
             );
@@ -184,51 +208,74 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      const adminRes = await fetch("/api/services?all=true");
-      if (adminRes.ok) {
-        const adminData: ServiceItem[] = await adminRes.json();
-        if (adminData.length > 0) {
-          setAllServices(adminData);
+      const isAdminPath =
+        includeAll ||
+        (typeof window !== "undefined" &&
+          window.location.pathname.startsWith("/admin"));
+
+      if (isAdminPath) {
+        const adminRes = await fetch("/api/services?all=true");
+        if (adminRes.ok) {
+          const adminData: ServiceItem[] = await adminRes.json();
+          if (adminData.length > 0) {
+            setAllServices(adminData);
+          }
+        } else if (activeList.length > 0) {
+          setAllServices(activeList);
         }
-      } else {
-        setAllServices((prev) => (services.length > 0 ? services : prev));
+      } else if (activeList.length > 0) {
+        setAllServices(activeList);
       }
     } catch {
       // Fallback silencioso
     }
-  }, [services.length]);
+  }, []);
 
-  useEffect(() => {
-    refreshServices();
-    fetch("/api/settings")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data) {
-          setStudioSettings({
-            professionalName:
-              data.professionalName &&
-              data.professionalName !== "Estética de Cílios"
-                ? data.professionalName
-                : "Emile Lash Designer",
-            specialty:
-              data.specialty && data.specialty !== "Extensão de Cílios"
-                ? data.specialty
-                : "Cílios • Sobrancelha • Brow Lamination • Lash Lifting",
-            description:
-              data.description || "Centro - Posto da Mata • @emiledesiigner",
-            whatsapp: data.whatsapp || "",
-            pixKey: data.pixKey || "000.000.000-00",
-            pixKeyType: data.pixKeyType || "CPF",
-            signalPercentage: data.signalPercentage ?? 50,
-            holdMinutes: data.holdMinutes ?? 15,
-          });
+  const refreshSettings = useCallback(async () => {
+    try {
+      const r = await fetch("/api/settings", { cache: "no-store" });
+      if (!r.ok) return;
+      const data = await r.json();
+      if (data) {
+        setStudioSettings({
+          professionalName:
+            data.professionalName &&
+            data.professionalName !== "Estética de Cílios"
+              ? data.professionalName
+              : "Emile Lash Designer",
+          specialty:
+            data.specialty && data.specialty !== "Extensão de Cílios"
+              ? data.specialty
+              : "Cílios • Sobrancelha • Brow Lamination • Lash Lifting",
+          description:
+            data.description || "Centro - Posto da Mata • @emiledesiigner",
+          whatsapp: data.whatsapp || "",
+          pixKey: data.pixKey || "000.000.000-00",
+          pixKeyType: data.pixKeyType || "CPF",
+          signalPercentage: data.signalPercentage ?? 50,
+          holdMinutes: data.holdMinutes ?? 15,
+        });
+      }
+    } catch {
+      // Fallback silencioso
+    }
+  }, []);
+
+  const refreshWorkingHours = useCallback(
+    async (
+      preloadedList?: Array<{
+        weekday: number;
+        active: boolean;
+        endTime: string;
+      }>
+    ) => {
+      try {
+        let whList = preloadedList;
+        if (!Array.isArray(whList)) {
+          const r = await fetch("/api/working-hours", { cache: "no-store" });
+          if (!r.ok) return;
+          whList = await r.json();
         }
-      })
-      .catch(() => {});
-
-    fetch("/api/working-hours")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((whList) => {
         if (Array.isArray(whList) && whList.length > 0) {
           const todayWeekday = new Date().getDay();
           const todayWh = whList.find(
@@ -248,12 +295,25 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
             );
           }
         }
-      })
-      .catch(() => {});
-  }, [refreshServices]);
+        setScheduleVersion((v) => v + 1);
+      } catch {
+        // Fallback silencioso
+      }
+    },
+    []
+  );
 
-  // Carregar disponibilidade real sempre que a data ou serviço mudar
   useEffect(() => {
+    refreshServices();
+    refreshSettings();
+    refreshWorkingHours();
+  }, [refreshServices, refreshSettings, refreshWorkingHours]);
+
+  // Carregar disponibilidade real nas telas da cliente quando data, serviço ou expediente mudar
+  useEffect(() => {
+    if (pathname?.startsWith("/admin") || pathname === "/login") {
+      return;
+    }
     let active = true;
     const fetchSlots = async () => {
       setLoadingAvailability(true);
@@ -265,11 +325,15 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         if (
           selectedService?.id &&
           !selectedService.id.startsWith("extensao-") &&
-          !selectedService.id.startsWith("volume-")
+          !selectedService.id.startsWith("volume-") &&
+          !selectedService.id.startsWith("manutencao") &&
+          !selectedService.id.startsWith("remocao")
         ) {
           query.set("serviceId", selectedService.id);
         }
-        const res = await fetch(`/api/availability?${query.toString()}`);
+        const res = await fetch(`/api/availability?${query.toString()}`, {
+          cache: "no-store",
+        });
         if (res.ok && active) {
           const data = await res.json();
           const slots: string[] = Array.isArray(data.times) ? data.times : [];
@@ -289,25 +353,51 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
     return () => {
       active = false;
     };
-  }, [selectedDate, selectedService?.id, selectedService?.durationMinutes]);
+  }, [
+    pathname,
+    selectedDate,
+    selectedService?.id,
+    selectedService?.durationMinutes,
+    scheduleVersion,
+  ]);
 
   const toggleServiceActive = async (id: string) => {
     const target = allServices.find((s) => s.id === id);
     if (!target) return;
     const nextActive = !target.active;
 
-    setAllServices((prev) =>
-      prev.map((item) =>
+    setAllServices((prev) => {
+      const next = prev.map((item) =>
         item.id === id ? { ...item, active: nextActive } : item
-      )
-    );
-
-    await fetch(`/api/services/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ active: nextActive }),
+      );
+      setServices(next.filter((item) => item.active));
+      return next;
     });
-    await refreshServices();
+
+    try {
+      const res = await fetch(`/api/services/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active: nextActive }),
+      });
+      if (!res.ok) {
+        setAllServices((prev) => {
+          const reverted = prev.map((item) =>
+            item.id === id ? { ...item, active: target.active } : item
+          );
+          setServices(reverted.filter((item) => item.active));
+          return reverted;
+        });
+      }
+    } catch {
+      setAllServices((prev) => {
+        const reverted = prev.map((item) =>
+          item.id === id ? { ...item, active: target.active } : item
+        );
+        setServices(reverted.filter((item) => item.active));
+        return reverted;
+      });
+    }
   };
 
   const createOrUpdateService = async (payload: {
@@ -331,7 +421,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) {
         return { ok: false, error: data.error || "Erro ao salvar serviço" };
       }
-      await refreshServices();
+      await refreshServices(true);
       return { ok: true };
     } catch {
       return { ok: false, error: "Erro de comunicação com o servidor" };
@@ -345,7 +435,11 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) {
         return { ok: false, error: data.error || "Erro ao excluir serviço" };
       }
-      await refreshServices();
+      setAllServices((prev) => {
+        const next = prev.filter((item) => item.id !== id);
+        setServices(next.filter((item) => item.active));
+        return next;
+      });
       return { ok: true };
     } catch {
       return { ok: false, error: "Erro de comunicação com o servidor" };
@@ -474,7 +568,9 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         reportReceiptSent,
         resumeClientAppointment,
         studioSettings,
+        refreshSettings,
         todayOpenStatus,
+        refreshWorkingHours,
         selectedAppointment,
         setSelectedAppointment,
         isMenuOpen,

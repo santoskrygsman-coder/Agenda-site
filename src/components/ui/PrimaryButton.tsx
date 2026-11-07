@@ -26,7 +26,7 @@ export default function PrimaryButton({
   disabled = false,
 }: PrimaryButtonProps) {
   const baseStyles =
-    "w-full rounded-[15px] py-3.5 px-5 text-[15px] font-medium transition-all duration-200 active:scale-[0.99] flex items-center justify-center relative select-none";
+    "w-full min-h-[48px] rounded-[15px] py-3.5 px-5 text-[15px] font-medium transition-all duration-200 active:scale-[0.99] flex items-center justify-center relative select-none touch-manipulation";
 
   const variantStyles = {
     rose: "bg-[#B87472] hover:bg-[#A86462] text-[#FFFDFB] shadow-[0_2px_8px_rgba(184,116,114,0.22)]",
@@ -40,12 +40,12 @@ export default function PrimaryButton({
   const content = (
     <>
       {leftIcon && <span className="mr-2 flex items-center">{leftIcon}</span>}
-      <span>{children}</span>
+      <span className="text-center leading-snug">{children}</span>
       {showArrow && (
         <ArrowRight
           size={18}
           strokeWidth={2}
-          className="absolute right-5 text-white/95"
+          className="absolute right-4 min-[375px]:right-5 text-white/95"
         />
       )}
     </>
@@ -53,7 +53,11 @@ export default function PrimaryButton({
 
   if (href) {
     return (
-      <Link href={href} onClick={onClick} className={`${baseStyles} ${variantStyles} ${className}`}>
+      <Link
+        href={href}
+        onClick={onClick}
+        className={`${baseStyles} ${variantStyles} ${className}`}
+      >
         {content}
       </Link>
     );

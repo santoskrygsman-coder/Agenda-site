@@ -1,6 +1,11 @@
 import { prisma } from "./prisma";
 import { Prisma } from "@prisma/client";
 import { getTodayLocalIso, isPastDate } from "./validation";
+import {
+  getCachedBlockedDates,
+  getCachedSettings,
+  getCachedWorkingHours,
+} from "./cache";
 
 // Fila de serialização em memória para complementar transações do banco e impedir condições de corrida (race conditions)
 let bookingLockPromise: Promise<unknown> = Promise.resolve();
@@ -52,14 +57,22 @@ export function intervalsOverlap(
   return startA < endB && endA > startB;
 }
 
+let lastExpireCheckMs = 0;
+
 /**
  * Libera automaticamente horários em que o prazo de reserva (expiresAt) venceu
  * sem envio de comprovante e sem confirmação de pagamento.
  */
 export async function expireOverduePendingAppointments(
-  db: Prisma.TransactionClient | typeof prisma = prisma
+  db: Prisma.TransactionClient | typeof prisma = prisma,
+  force = false
 ): Promise<number> {
-  const now = new Date();
+  const nowMs = Date.now();
+  if (!force && nowMs - lastExpireCheckMs < 15000) {
+    return 0;
+  }
+  lastExpireCheckMs = nowMs;
+  const now = new Date(nowMs);
   const result = await db.appointment.updateMany({
     where: {
       status: "PENDING",
@@ -105,19 +118,19 @@ export async function getAvailableSlotsForDate(
   const dateObj = new Date(y, m - 1, d);
   const weekday = dateObj.getDay();
 
-  // 1. Verificar horário de funcionamento e folga semanal
-  const workingHours = await db.workingHours.findUnique({
-    where: { weekday },
-  });
+  // Buscar expediente, bloqueios e configurações do cache em memória do servidor
+  const [allWorkingHours, allBlockedDates, settings] = await Promise.all([
+    getCachedWorkingHours(),
+    getCachedBlockedDates(),
+    getCachedSettings(),
+  ]);
+
+  const workingHours = allWorkingHours.find((w) => w.weekday === weekday);
+  const blockedRecords = allBlockedDates.filter((b) => b.date === dateStr);
 
   if (!workingHours || !workingHours.active) {
     return { available: false, reason: "Dia de folga", times: [] };
   }
-
-  // 2. Verificar bloqueios na data (dia inteiro ou parcial)
-  const blockedRecords = await db.blockedDate.findMany({
-    where: { date: dateStr },
-  });
 
   const fullDayBlock = blockedRecords.find(
     (b) => !b.startTime || !b.endTime
@@ -130,8 +143,6 @@ export async function getAvailableSlotsForDate(
     };
   }
 
-  // 3. Buscar agendamentos ativos na data (PENDING, CONFIRMED, COMPLETED)
-  const settings = await db.settings.findFirst();
   const statusesToBlock = ["CONFIRMED", "COMPLETED"];
   if (!settings || settings.pendingBlocksSlot) {
     statusesToBlock.push("PENDING");
@@ -142,6 +153,10 @@ export async function getAvailableSlotsForDate(
       date: dateStr,
       status: { in: statusesToBlock },
       ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
+    },
+    select: {
+      startTime: true,
+      endTime: true,
     },
   });
 
@@ -211,10 +226,15 @@ export async function isTimeAvailable(
   startTime: string,
   durationMins: number,
   excludeAppointmentId?: string,
-  db: Prisma.TransactionClient | typeof prisma = prisma
+  db: Prisma.TransactionClient | typeof prisma = prisma,
+  options?: {
+    allowPastToday?: boolean;
+    allowPastDates?: boolean;
+    ignoreWorkingHours?: boolean;
+  }
 ): Promise<boolean> {
   if (!/^\d{2}:\d{2}$/.test(startTime)) return false;
-  if (isPastDate(dateStr)) return false;
+  if (!options?.allowPastDates && isPastDate(dateStr)) return false;
 
   await expireOverduePendingAppointments(db);
 
@@ -222,42 +242,46 @@ export async function isTimeAvailable(
   const dateObj = new Date(y, m - 1, d);
   const weekday = dateObj.getDay();
 
-  const workingHours = await db.workingHours.findUnique({
-    where: { weekday },
-  });
-  if (!workingHours || !workingHours.active) return false;
+  const [allWorkingHours, allBlockedDates, settings] = await Promise.all([
+    getCachedWorkingHours(),
+    getCachedBlockedDates(),
+    getCachedSettings(),
+  ]);
+
+  const workingHours = allWorkingHours.find((w) => w.weekday === weekday);
+  const blockedRecords = allBlockedDates.filter((b) => b.date === dateStr);
 
   const slotStart = timeToMinutes(startTime);
   const slotEnd = slotStart + durationMins;
-  const whStart = timeToMinutes(workingHours.startTime);
-  const whEnd = timeToMinutes(workingHours.endTime);
 
-  if (slotStart < whStart || slotEnd > whEnd) return false;
+  if (!options?.ignoreWorkingHours) {
+    if (!workingHours || !workingHours.active) return false;
 
-  if (dateStr === getTodayLocalIso()) {
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    if (slotStart <= currentMinutes) return false;
+    const whStart = timeToMinutes(workingHours.startTime);
+    const whEnd = timeToMinutes(workingHours.endTime);
+
+    if (slotStart < whStart || slotEnd > whEnd) return false;
+
+    if (!options?.allowPastToday && dateStr === getTodayLocalIso()) {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      if (slotStart <= currentMinutes) return false;
+    }
+
+    if (workingHours.breakStart && workingHours.breakEnd) {
+      const bStart = timeToMinutes(workingHours.breakStart);
+      const bEnd = timeToMinutes(workingHours.breakEnd);
+      if (intervalsOverlap(slotStart, slotEnd, bStart, bEnd)) return false;
+    }
+
+    for (const b of blockedRecords) {
+      if (!b.startTime || !b.endTime) return false;
+      const bs = timeToMinutes(b.startTime);
+      const be = timeToMinutes(b.endTime);
+      if (intervalsOverlap(slotStart, slotEnd, bs, be)) return false;
+    }
   }
 
-  if (workingHours.breakStart && workingHours.breakEnd) {
-    const bStart = timeToMinutes(workingHours.breakStart);
-    const bEnd = timeToMinutes(workingHours.breakEnd);
-    if (intervalsOverlap(slotStart, slotEnd, bStart, bEnd)) return false;
-  }
-
-  const blockedRecords = await db.blockedDate.findMany({
-    where: { date: dateStr },
-  });
-
-  for (const b of blockedRecords) {
-    if (!b.startTime || !b.endTime) return false;
-    const bs = timeToMinutes(b.startTime);
-    const be = timeToMinutes(b.endTime);
-    if (intervalsOverlap(slotStart, slotEnd, bs, be)) return false;
-  }
-
-  const settings = await db.settings.findFirst();
   const statusesToBlock = ["CONFIRMED", "COMPLETED"];
   if (!settings || settings.pendingBlocksSlot) {
     statusesToBlock.push("PENDING");
@@ -268,6 +292,10 @@ export async function isTimeAvailable(
       date: dateStr,
       status: { in: statusesToBlock },
       ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
+    },
+    select: {
+      startTime: true,
+      endTime: true,
     },
   });
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
 import { formatCurrency, formatDuration } from "@/lib/formatters";
+import { invalidateServicesCache } from "@/lib/cache";
 
 async function updateServiceHandler(
   request: Request,
@@ -57,6 +58,7 @@ async function updateServiceHandler(
       where: { id },
       data,
     });
+    invalidateServicesCache();
 
     return NextResponse.json({
       id: updated.id,
@@ -119,6 +121,7 @@ export async function DELETE(
     }
 
     await prisma.service.delete({ where: { id } });
+    invalidateServicesCache();
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting service:", error);

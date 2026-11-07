@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getAvailableSlotsForDate } from "@/lib/scheduling";
+import { getCachedAllServices } from "@/lib/cache";
 
 export async function GET(request: Request) {
   try {
@@ -21,7 +21,8 @@ export async function GET(request: Request) {
     let durationMins = durationParam ? parseInt(durationParam, 10) : 0;
 
     if (serviceId) {
-      const svc = await prisma.service.findUnique({ where: { id: serviceId } });
+      const allServices = await getCachedAllServices();
+      const svc = allServices.find((s) => s.id === serviceId);
       if (!svc || !svc.active) {
         return NextResponse.json(
           { error: "Serviço inválido ou inativo", times: [] },

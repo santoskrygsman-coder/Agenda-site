@@ -43,22 +43,28 @@ function AppointmentDetailsContent() {
 
   useEffect(() => {
     const fetchLatest = async () => {
+      const targetId = queryId || selectedAppointment?.id;
+      if (targetId) {
+        const res = await fetch(
+          `/api/appointments?id=${encodeURIComponent(targetId)}`
+        );
+        if (!res.ok) return;
+        const list = await res.json();
+        if (Array.isArray(list) && list.length > 0) {
+          setSelectedAppointment(list[0]);
+        }
+        return;
+      }
+
       const res = await fetch("/api/appointments");
       if (!res.ok) return;
       const list = await res.json();
-      if (queryId) {
-        const found = list.find((a: { id: string }) => a.id === queryId);
-        if (found) setSelectedAppointment(found);
-      } else if (!selectedAppointment && list.length > 0) {
+      if (Array.isArray(list) && list.length > 0) {
         setSelectedAppointment(list[0]);
-      } else if (selectedAppointment) {
-        const refreshed = list.find(
-          (a: { id: string }) => a.id === selectedAppointment.id
-        );
-        if (refreshed) setSelectedAppointment(refreshed);
       }
     };
     fetchLatest();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryId]);
 
   const appt = selectedAppointment;
@@ -173,12 +179,21 @@ function AppointmentDetailsContent() {
   const handleDeletePermanent = async () => {
     if (!appt) return;
     setLoading(true);
-    const res = await fetch(`/api/appointments/${appt.id}`, {
-      method: "DELETE",
-    });
-    setLoading(false);
-    if (res.ok) {
-      router.push("/admin/agenda");
+    setErrorMsg("");
+    try {
+      const res = await fetch(`/api/appointments/${appt.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        router.push("/admin/agenda");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setErrorMsg(data.error || "Erro ao excluir agendamento.");
+      }
+    } catch {
+      setErrorMsg("Erro de conexão ao excluir agendamento.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -274,25 +289,25 @@ function AppointmentDetailsContent() {
       />
 
       {moreMenuOpen && (
-        <div className="mx-5 mb-2 bg-[#FAF5F1] border border-[#E5D4C9] rounded-[14px] p-2 shadow-lg space-y-1">
+        <div className="mx-4 min-[375px]:mx-5 mb-2 bg-[#FAF5F1] border border-[#E5D4C9] rounded-[14px] p-2 shadow-lg space-y-1">
           <button
             type="button"
             onClick={handleCompleteFullPayment}
-            className="w-full text-left px-3 py-2 rounded-[10px] text-[12.5px] font-semibold text-[#2E8540] hover:bg-[#D8EFDC]/60"
+            className="w-full min-h-[44px] text-left px-3.5 py-2.5 rounded-[10px] text-[13px] font-semibold text-[#2E8540] hover:bg-[#D8EFDC]/60 active:scale-[0.99] transition touch-manipulation"
           >
             ✓ Concluir atendimento (Receber 100%)
           </button>
           <button
             type="button"
             onClick={handleDeletePermanent}
-            className="w-full text-left px-3 py-2 rounded-[10px] text-[12.5px] font-semibold text-[#B84A48] hover:bg-[#F3D8D8]/60"
+            className="w-full min-h-[44px] text-left px-3.5 py-2.5 rounded-[10px] text-[13px] font-semibold text-[#B84A48] hover:bg-[#F3D8D8]/60 active:scale-[0.99] transition touch-manipulation"
           >
             Excluir agendamento permanentemente
           </button>
         </div>
       )}
 
-      <div className="px-5 pt-1 pb-6 flex-1 flex flex-col justify-between">
+      <div className="px-4 min-[375px]:px-5 pt-1 pb-6 flex-1 flex flex-col justify-between">
         <div>
           {/* Top Centered Status Pill */}
           <div className="flex justify-center my-2">
@@ -304,26 +319,26 @@ function AppointmentDetailsContent() {
           </div>
 
           {feedback && (
-            <div className="my-2 bg-[#D8EFDC] text-[#2E8540] text-[12px] font-semibold px-3 py-2 rounded-[12px] text-center">
+            <div className="my-2 bg-[#D8EFDC] text-[#2E8540] text-[12px] font-semibold px-3 py-2.5 rounded-[12px] text-center">
               {feedback}
             </div>
           )}
 
           {errorMsg && (
-            <div className="my-2 bg-[#F3D8D8] text-[#B84A48] text-[12px] font-semibold px-3 py-2 rounded-[12px] text-center">
+            <div className="my-2 bg-[#F3D8D8] text-[#B84A48] text-[12px] font-semibold px-3 py-2.5 rounded-[12px] text-center">
               {errorMsg}
             </div>
           )}
 
           {/* Client Row */}
-          <div className="mt-2 py-3.5 border-b border-[#E6D9D0] flex items-center justify-between">
-            <div className="flex items-center gap-3.5">
+          <div className="mt-2 py-3.5 border-b border-[#E6D9D0] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3.5 min-w-0">
               <User size={19} className="text-[#3D2923] shrink-0" />
-              <div>
-                <h2 className="text-[15.5px] font-bold text-[#2D1C18] leading-tight">
+              <div className="min-w-0">
+                <h2 className="text-[15.5px] font-bold text-[#2D1C18] leading-tight truncate">
                   {appt.clientName}
                 </h2>
-                <p className="text-[13px] text-[#5C4841] mt-0.5">
+                <p className="text-[13px] text-[#5C4841] mt-0.5 truncate">
                   {appt.clientPhone}
                 </p>
               </div>
@@ -333,10 +348,10 @@ function AppointmentDetailsContent() {
               href={waUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-1 rounded-full hover:scale-105 transition"
+              className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-[#EADCD3]/60 active:scale-95 transition shrink-0 touch-manipulation"
               aria-label="Conversar no WhatsApp com mensagem pré-preenchida"
             >
-              <WhatsAppCircleIcon size={26} variant="green" />
+              <WhatsAppCircleIcon size={28} variant="green" />
             </a>
           </div>
 
@@ -395,6 +410,7 @@ function AppointmentDetailsContent() {
             {appt.status === "confirmado" ? (
               <PrimaryButton
                 variant="confirm"
+                disabled={loading}
                 onClick={handleCompleteFullPayment}
               >
                 {loading
@@ -402,7 +418,11 @@ function AppointmentDetailsContent() {
                   : "Concluir atendimento (Receber restante)"}
               </PrimaryButton>
             ) : (
-              <PrimaryButton variant="confirm" onClick={handleConfirmManual}>
+              <PrimaryButton
+                variant="confirm"
+                disabled={loading}
+                onClick={handleConfirmManual}
+              >
                 {loading
                   ? "Processando..."
                   : "Confirmar sinal (Sinal confirmado)"}
@@ -411,12 +431,20 @@ function AppointmentDetailsContent() {
 
             <PrimaryButton
               variant="neutral"
-              onClick={() => setRescheduleOpen(true)}
+              disabled={loading}
+              onClick={() => {
+                setErrorMsg("");
+                setRescheduleOpen(true);
+              }}
             >
               Remarcar
             </PrimaryButton>
 
-            <PrimaryButton variant="danger-soft" onClick={handleCancel}>
+            <PrimaryButton
+              variant="danger-soft"
+              disabled={loading}
+              onClick={handleCancel}
+            >
               Cancelar
             </PrimaryButton>
 
@@ -426,9 +454,9 @@ function AppointmentDetailsContent() {
                 href={expiredWaUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full bg-[#F5E6DF] hover:bg-[#EDD8CE] border border-[#E2C8BE] text-[#4A3630] rounded-[14px] py-2.5 px-3 flex items-center justify-center gap-2 text-[12px] font-semibold transition"
+                className="w-full min-h-[46px] bg-[#F5E6DF] hover:bg-[#EDD8CE] active:scale-[0.99] border border-[#E2C8BE] text-[#4A3630] rounded-[14px] py-3 px-3.5 flex items-center justify-center gap-2 text-[12.5px] font-semibold transition touch-manipulation text-center"
               >
-                <WhatsAppCircleIcon size={16} variant="green" />
+                <WhatsAppCircleIcon size={17} variant="green" />
                 <span>
                   Avisar cliente que o horário foi liberado (falta de sinal)
                 </span>
@@ -450,8 +478,8 @@ function AppointmentDetailsContent() {
 
       {/* Modal de Remarcação com verificação real de disponibilidade */}
       {rescheduleOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#2D1C18]/45 p-3">
-          <div className="w-full max-w-[390px] bg-[#F8F1EB] border border-[#E6D8CF] rounded-[22px] p-5 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#2D1C18]/45 p-2.5 min-[375px]:p-3">
+          <div className="w-full max-w-[410px] max-h-[88dvh] overflow-y-auto bg-[#F8F1EB] border border-[#E6D8CF] rounded-[22px] p-4 min-[375px]:p-5 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-[#E6D8CF]">
               <h3 className="font-serif text-[18px] font-semibold text-[#2D1C18]">
                 Remarcar agendamento
@@ -459,13 +487,19 @@ function AppointmentDetailsContent() {
               <button
                 type="button"
                 onClick={() => setRescheduleOpen(false)}
-                className="w-7 h-7 rounded-full bg-[#EADCD3] flex items-center justify-center text-[#2D1C18]"
+                aria-label="Fechar modal"
+                className="w-10 h-10 rounded-full bg-[#EADCD3] flex items-center justify-center text-[#2D1C18] active:scale-95 transition touch-manipulation"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleRescheduleSubmit} className="mt-3 space-y-3">
+              {errorMsg && (
+                <div className="bg-[#F3D8D8] text-[#B84A48] text-[12px] font-semibold px-3 py-2 rounded-[10px] text-center">
+                  {errorMsg}
+                </div>
+              )}
               <div>
                 <label className="block text-[12px] font-semibold text-[#4E3B35] mb-1">
                   Nova data
@@ -476,7 +510,7 @@ function AppointmentDetailsContent() {
                   min={getTodayLocalIso()}
                   value={newDate}
                   onChange={(e) => setNewDate(e.target.value)}
-                  className="w-full bg-[#FAF5F1] border border-[#E4D5CB] rounded-[11px] px-3 py-2 text-[13.5px]"
+                  className="w-full min-h-[46px] bg-[#FAF5F1] border border-[#E4D5CB] rounded-[12px] px-3 py-2.5 text-[14px] text-[#2D1C18]"
                 />
               </div>
 
@@ -495,10 +529,10 @@ function AppointmentDetailsContent() {
                         key={slot}
                         type="button"
                         onClick={() => setNewTime(slot)}
-                        className={`py-2 rounded-[10px] text-[12.5px] border ${
+                        className={`min-h-[44px] py-2.5 rounded-[11px] text-[13px] border transition active:scale-[0.98] touch-manipulation ${
                           newTime === slot
                             ? "bg-[#B87472] text-white border-[#B87472] font-bold"
-                            : "bg-[#FAF5F1] text-[#2D1C18] border-[#E4D5CB]"
+                            : "bg-[#FAF5F1] text-[#2D1C18] border-[#E4D5CB] font-medium"
                         }`}
                       >
                         {slot}

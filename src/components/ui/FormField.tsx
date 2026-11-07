@@ -14,6 +14,16 @@ interface FormFieldProps {
   error?: string | null;
   multiline?: boolean;
   type?: string;
+  inputMode?:
+    | "text"
+    | "tel"
+    | "email"
+    | "numeric"
+    | "decimal"
+    | "search"
+    | "url";
+  autoComplete?: string;
+  enterKeyHint?: "enter" | "done" | "go" | "next" | "previous" | "search" | "send";
 }
 
 export default function FormField({
@@ -27,6 +37,9 @@ export default function FormField({
   error,
   multiline = false,
   type = "text",
+  inputMode,
+  autoComplete,
+  enterKeyHint,
 }: FormFieldProps) {
   const hasError = Boolean(error);
 
@@ -57,7 +70,7 @@ export default function FormField({
             onBlur={onBlur}
             placeholder={subPlaceholder || ""}
             aria-invalid={hasError}
-            className="w-full bg-transparent pt-2 text-[13.5px] text-[#2D1C18] placeholder-[#8A766F] focus:outline-none resize-none"
+            className="w-full bg-transparent pt-2 text-[14px] text-[#2D1C18] placeholder-[#8A766F] focus:outline-none resize-none"
           />
         </div>
         {hasError && (
@@ -73,7 +86,7 @@ export default function FormField({
   return (
     <div className="w-full">
       <div
-        className={`w-full rounded-[14px] px-3.5 py-3 flex items-center gap-3 transition-colors border ${
+        className={`w-full min-h-[48px] rounded-[14px] px-3.5 py-2.5 flex items-center gap-3 transition-colors border ${
           hasError
             ? "bg-[#FDF4F4] border-[#C95B59] focus-within:border-[#B84A48]"
             : "bg-[#FAF5F0] border-[#E6D8CF] focus-within:border-[#B87472]"
@@ -88,14 +101,19 @@ export default function FormField({
         </span>
         <input
           type={type}
+          inputMode={inputMode}
+          autoComplete={autoComplete}
+          enterKeyHint={enterKeyHint}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
           placeholder={placeholder}
           aria-invalid={hasError}
-          className="flex-1 bg-transparent text-[13.5px] text-[#2D1C18] placeholder-[#7D6A63] focus:outline-none min-w-0"
+          className="flex-1 bg-transparent text-[14px] text-[#2D1C18] placeholder-[#7D6A63] focus:outline-none min-w-0"
         />
-        {rightIcon && <span className="shrink-0 text-[#4B3630]">{rightIcon}</span>}
+        {rightIcon && (
+          <span className="shrink-0 text-[#4B3630]">{rightIcon}</span>
+        )}
       </div>
       {hasError && (
         <p className="mt-1 px-1 text-[11.5px] font-medium text-[#B84A48] flex items-center gap-1">

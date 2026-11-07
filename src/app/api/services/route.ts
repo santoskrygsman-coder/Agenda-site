@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
 import { formatCurrency, formatDuration } from "@/lib/formatters";
+import { getCachedAllServices, invalidateServicesCache } from "@/lib/cache";
 
 export async function GET(request: Request) {
   try {
@@ -15,10 +16,10 @@ export async function GET(request: Request) {
       }
     }
 
-    const services = await prisma.service.findMany({
-      where: includeInactive ? {} : { active: true },
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    });
+    const allServices = await getCachedAllServices();
+    const services = includeInactive
+      ? allServices
+      : allServices.filter((s) => s.active);
 
     const mapped = services.map((s) => ({
       id: s.id,
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const count = await prisma.service.count();
+    const allExisting = await getCachedAllServices();
     const created = await prisma.service.create({
       data: {
         name,
@@ -89,9 +90,10 @@ export async function POST(request: Request) {
           body.requiresDeposit !== undefined
             ? Boolean(body.requiresDeposit)
             : true,
-        sortOrder: count + 1,
+        sortOrder: allExisting.length + 1,
       },
     });
+    invalidateServicesCache();
 
     return NextResponse.json(
       {

@@ -24,9 +24,6 @@ interface ServiceCardProps {
 
 /**
  * Retorna a versão em Alta Definição (HD) da fotografia do serviço.
- * Se a profissional enviou uma foto própria (/uploads/services/... ou data:image/...),
- * usa a foto real enviada por ela em resolução original.
- * Caso seja uma das miniaturas padrão (/images/service-*.png), mapeia para a versão HD.
  */
 export function resolveHdServiceImage(imageUrl: string): string {
   if (!imageUrl) return "/images/service-classica-hd.png";
@@ -41,7 +38,7 @@ export function resolveHdServiceImage(imageUrl: string): string {
   return hdMap[imageUrl] || imageUrl;
 }
 
-export default function ServiceCard({
+export function ServiceCardComponent({
   service,
   mode = "client",
   onSelect,
@@ -52,28 +49,30 @@ export default function ServiceCard({
   const [isMagnified, setIsMagnified] = useState(false);
   const [hdFallback, setHdFallback] = useState(false);
 
+  const thumbSrc = service.image || "/images/service-classica.png";
   const hdSrc = hdFallback
-    ? service.image
+    ? thumbSrc
     : resolveHdServiceImage(service.image);
 
   if (mode === "summary") {
     return (
-      <div className="w-full bg-[#F5E6DF] border border-[#E5D1C7] rounded-[18px] p-3 flex items-center gap-3.5">
-        <div className="w-[62px] h-[62px] rounded-full overflow-hidden shrink-0 border border-[#DEC7BC]">
+      <div className="w-full bg-[#F5E6DF] border border-[#E5D1C7] rounded-[18px] p-3 flex items-center gap-3">
+        <div className="w-[58px] h-[58px] min-[375px]:w-[62px] min-[375px]:h-[62px] rounded-full overflow-hidden shrink-0 border border-[#DEC7BC]">
           <img
-            src={hdSrc}
+            src={thumbSrc}
             alt={service.name}
-            onError={() => setHdFallback(true)}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover"
           />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-[16px] font-bold text-[#2D1C18] leading-snug truncate">
+          <h3 className="text-[15px] min-[375px]:text-[16px] font-bold text-[#2D1C18] leading-snug truncate">
             {service.name}
           </h3>
-          <div className="flex items-center gap-4 mt-1.5 text-[13.5px] text-[#2D1C18]">
+          <div className="flex items-center flex-wrap gap-x-3.5 gap-y-1 mt-1 text-[13px] min-[375px]:text-[13.5px] text-[#2D1C18]">
             <span className="flex items-center gap-1.5 font-medium text-[#4A3731]">
-              <Clock size={14} className="text-[#6E5850]" />
+              <Clock size={14} className="text-[#6E5850] shrink-0" />
               {service.duration}
             </span>
             <span className="font-bold text-[#2D1C18]">
@@ -87,23 +86,24 @@ export default function ServiceCard({
 
   if (mode === "admin") {
     return (
-      <div className="w-full bg-[#FAF5F1] border border-[#E7DAD1] rounded-[18px] p-2.5 pr-3.5 flex items-center gap-3.5">
+      <div className="w-full bg-[#FAF5F1] border border-[#E7DAD1] rounded-[18px] p-2.5 pr-3 flex items-center gap-3">
         <button
           type="button"
           onClick={() => onEdit?.(service)}
-          className="flex items-center gap-3.5 flex-1 min-w-0 text-left group"
+          className="flex items-center gap-3 flex-1 min-w-0 text-left group min-h-[56px]"
         >
           <div className="relative w-[56px] h-[56px] shrink-0">
             <div className="w-full h-full rounded-full overflow-hidden border border-[#E1CFC5]">
               <img
-                src={hdSrc}
+                src={thumbSrc}
                 alt={service.name}
-                onError={() => setHdFallback(true)}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
             </div>
-            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-[#2D1C18]/85 text-[#FAF5F1] text-[9px] font-semibold px-1.5 py-[1px] rounded-full flex items-center gap-0.5 shadow-2xs">
-              <Camera size={8.5} />
+            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-[#2D1C18]/85 text-[#FAF5F1] text-[9.5px] font-semibold px-2 py-[2px] rounded-full flex items-center gap-0.5 shadow-2xs">
+              <Camera size={9} />
               <span>Foto</span>
             </span>
           </div>
@@ -121,16 +121,20 @@ export default function ServiceCard({
           role="switch"
           aria-checked={service.active}
           onClick={() => onToggleActive?.(service.id)}
-          className={`w-[44px] h-[25px] rounded-full p-0.5 transition-colors duration-200 flex items-center shrink-0 ${
-            service.active ? "bg-[#B87472]" : "bg-[#D5C5BC]"
-          }`}
+          className="min-w-[48px] min-h-[44px] flex items-center justify-end shrink-0"
           aria-label={`Ativar ou desativar ${service.name}`}
         >
           <span
-            className={`w-[21px] h-[21px] rounded-full bg-[#FFFDFB] shadow-sm transform transition-transform duration-200 ${
-              service.active ? "translate-x-[19px]" : "translate-x-0"
+            className={`w-[44px] h-[25px] rounded-full p-0.5 transition-colors duration-200 flex items-center ${
+              service.active ? "bg-[#B87472]" : "bg-[#D5C5BC]"
             }`}
-          />
+          >
+            <span
+              className={`w-[21px] h-[21px] rounded-full bg-[#FFFDFB] shadow-sm transform transition-transform duration-200 ${
+                service.active ? "translate-x-[19px]" : "translate-x-0"
+              }`}
+            />
+          </span>
         </button>
       </div>
     );
@@ -148,14 +152,15 @@ export default function ServiceCard({
             onSelect?.(service);
           }
         }}
-        className="w-full text-left bg-[#FAF5F1] hover:bg-[#F7EFE9] active:scale-[0.99] transition-all border border-[#E8DBD2] rounded-[18px] p-2.5 pr-3 flex items-center gap-3.5 cursor-pointer"
+        className="w-full text-left bg-[#FAF5F1] hover:bg-[#F7EFE9] active:scale-[0.99] transition-all border border-[#E8DBD2] rounded-[18px] p-2.5 pr-3 flex items-center gap-3 cursor-pointer touch-manipulation"
       >
         <div className="relative w-[62px] h-[62px] shrink-0">
           <div className="w-full h-full rounded-full overflow-hidden border border-[#E2D0C6]">
             <img
-              src={hdSrc}
+              src={thumbSrc}
               alt={service.name}
-              onError={() => setHdFallback(true)}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover"
             />
           </div>
@@ -166,10 +171,10 @@ export default function ServiceCard({
               setIsMagnified(false);
               setZoomOpen(true);
             }}
-            className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-[#2D1C18]/85 hover:bg-[#2D1C18] text-[#FAF5F1] text-[9.5px] font-semibold px-2 py-[2px] rounded-full flex items-center gap-0.5 shadow-sm border border-[#E2D0C6]/40"
+            className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-[#2D1C18]/90 hover:bg-[#2D1C18] text-[#FAF5F1] text-[10px] font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm border border-[#E2D0C6]/40"
             aria-label={`Ampliar foto em alta definição de ${service.name}`}
           >
-            <Search size={9} strokeWidth={2.5} />
+            <Search size={9.5} strokeWidth={2.5} />
             <span>Ver</span>
           </button>
         </div>
@@ -178,12 +183,12 @@ export default function ServiceCard({
           <h3 className="text-[14.5px] font-bold text-[#2D1C18] leading-tight truncate">
             {service.name}
           </h3>
-          <p className="text-[12px] text-[#7A655D] mt-0.5 truncate">
+          <p className="text-[12px] text-[#7A655D] mt-0.5 line-clamp-1">
             {service.description}
           </p>
-          <div className="flex items-center gap-4 mt-1.5 text-[12.5px]">
+          <div className="flex items-center flex-wrap gap-x-3.5 gap-y-0.5 mt-1.5 text-[12.5px]">
             <span className="flex items-center gap-1 font-semibold text-[#3D2A24]">
-              <Clock size={12.5} className="text-[#7A655D]" />
+              <Clock size={12.5} className="text-[#7A655D] shrink-0" />
               {service.duration}
             </span>
             <span className="font-bold text-[#2D1C18]">
@@ -191,20 +196,20 @@ export default function ServiceCard({
             </span>
           </div>
         </div>
-        <ChevronRight size={16} className="text-[#8E7970] shrink-0" />
+        <ChevronRight size={17} className="text-[#8E7970] shrink-0" />
       </div>
 
       {/* Modal de Fotografia em Alta Definição (HD) com Lupa de Zoom 2x */}
       {zoomOpen && (
         <div
-          className="fixed inset-0 z-50 bg-[#2D1C18]/75 backdrop-blur-[3px] flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-[#2D1C18]/75 backdrop-blur-[3px] flex items-center justify-center p-3"
           onClick={() => setZoomOpen(false)}
         >
           <div
-            className="w-full max-w-[380px] bg-[#FAF5F1] border border-[#E5D4C9] rounded-[24px] overflow-hidden shadow-2xl"
+            className="w-full max-w-[390px] max-h-[90dvh] overflow-y-auto bg-[#FAF5F1] border border-[#E5D4C9] rounded-[24px] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative w-full h-[320px] bg-[#EAD8CE] overflow-auto">
+            <div className="relative w-full h-[270px] min-[375px]:h-[310px] bg-[#EAD8CE] overflow-auto">
               <img
                 src={hdSrc}
                 alt={`Fotografia em alta definição: ${service.name}`}
@@ -217,23 +222,23 @@ export default function ServiceCard({
 
               {/* Selo HD + Lupa interativa */}
               <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                <span className="bg-[#2D1C18]/75 backdrop-blur-xs text-[#FAF5F1] text-[10.5px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
+                <span className="bg-[#2D1C18]/80 backdrop-blur-xs text-[#FAF5F1] text-[11px] font-semibold px-2.5 py-1.5 rounded-full flex items-center gap-1">
                   <Sparkles size={11} className="text-[#E2B897]" />
                   <span>Foto Real HD</span>
                 </span>
                 <button
                   type="button"
                   onClick={() => setIsMagnified((prev) => !prev)}
-                  className="bg-[#FAF5F1]/90 hover:bg-[#FAF5F1] text-[#2D1C18] text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs"
+                  className="min-h-[36px] bg-[#FAF5F1]/95 hover:bg-[#FAF5F1] text-[#2D1C18] text-[11.5px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-xs"
                 >
                   {isMagnified ? (
                     <>
-                      <ZoomOut size={12} className="text-[#B87472]" />
+                      <ZoomOut size={13} className="text-[#B87472]" />
                       <span>1x</span>
                     </>
                   ) : (
                     <>
-                      <ZoomIn size={12} className="text-[#B87472]" />
+                      <ZoomIn size={13} className="text-[#B87472]" />
                       <span>Zoom 2x</span>
                     </>
                   )}
@@ -243,16 +248,16 @@ export default function ServiceCard({
               <button
                 type="button"
                 onClick={() => setZoomOpen(false)}
-                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#2D1C18]/75 text-[#FAF5F1] flex items-center justify-center"
+                className="absolute top-2.5 right-2.5 w-11 h-11 rounded-full bg-[#2D1C18]/75 text-[#FAF5F1] flex items-center justify-center active:scale-95 transition"
                 aria-label="Fechar visualização"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
             <div className="p-4 space-y-3">
               <div>
-                <h3 className="font-serif text-[20px] font-bold text-[#2D1C18]">
+                <h3 className="font-serif text-[19px] font-bold text-[#2D1C18]">
                   {service.name}
                 </h3>
                 <p className="text-[13px] text-[#5E4B44] mt-1 leading-relaxed">
@@ -276,7 +281,7 @@ export default function ServiceCard({
                   setZoomOpen(false);
                   onSelect?.(service);
                 }}
-                className="w-full bg-[#B87472] hover:bg-[#A66361] text-[#FFFDFB] font-semibold text-[14px] py-3 rounded-full flex items-center justify-center gap-1.5 shadow-sm transition"
+                className="w-full min-h-[48px] bg-[#B87472] hover:bg-[#A66361] text-[#FFFDFB] font-semibold text-[14.5px] py-3 rounded-full flex items-center justify-center gap-1.5 shadow-sm transition active:scale-[0.99]"
               >
                 <Plus size={16} />
                 <span>Agendar este procedimento</span>
@@ -288,3 +293,6 @@ export default function ServiceCard({
     </>
   );
 }
+
+const ServiceCard = React.memo(ServiceCardComponent);
+export default ServiceCard;

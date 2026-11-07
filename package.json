@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "next dev --webpack",
     "build": "prisma generate && next build --webpack",
     "start": "next start",
@@ -11,6 +12,7 @@
     "db:use-postgres": "node scripts/switch-prisma-provider.mjs postgresql && npx prisma generate",
     "db:use-sqlite": "node scripts/switch-prisma-provider.mjs sqlite && npx prisma generate",
     "db:migrate-data": "node scripts/migrate-sqlite-to-postgres.mjs",
+    "db:migrate-auto": "node scripts/auto-migrate-supabase.mjs",
     "uploads:migrate": "node scripts/migrate-uploads-to-supabase.mjs"
   },
   "dependencies": {

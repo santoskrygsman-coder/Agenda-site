@@ -145,8 +145,12 @@ CREATE TABLE IF NOT EXISTS "Settings" (
 CREATE UNIQUE INDEX IF NOT EXISTS "User_username_key" ON "User"("username");
 CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email");
 CREATE UNIQUE INDEX IF NOT EXISTS "Client_phone_key" ON "Client"("phone");
+CREATE INDEX IF NOT EXISTS "GalleryImage_serviceId_idx" ON "GalleryImage"("serviceId");
 CREATE INDEX IF NOT EXISTS "Appointment_date_status_idx" ON "Appointment"("date", "status");
 CREATE INDEX IF NOT EXISTS "Appointment_date_startTime_idx" ON "Appointment"("date", "startTime");
+CREATE INDEX IF NOT EXISTS "Appointment_clientId_idx" ON "Appointment"("clientId");
+CREATE INDEX IF NOT EXISTS "Appointment_serviceId_idx" ON "Appointment"("serviceId");
+CREATE INDEX IF NOT EXISTS "Appointment_status_expiresAt_idx" ON "Appointment"("status", "expiresAt");
 CREATE UNIQUE INDEX IF NOT EXISTS "WorkingHours_weekday_key" ON "WorkingHours"("weekday");
 CREATE INDEX IF NOT EXISTS "BlockedDate_date_idx" ON "BlockedDate"("date");
 CREATE INDEX IF NOT EXISTS "Expense_date_idx" ON "Expense"("date");
@@ -156,6 +160,11 @@ CREATE INDEX IF NOT EXISTS "Expense_date_idx" ON "Expense"("date");
 CREATE UNIQUE INDEX IF NOT EXISTS "Appointment_active_date_startTime_unique"
 ON "Appointment"("date", "startTime")
 WHERE "status" IN ('PENDING', 'CONFIRMED', 'COMPLETED');
+
+-- Índice parcial para expiração rápida de reservas pendentes vencidas
+CREATE INDEX IF NOT EXISTS "Appointment_pending_expiresAt_idx"
+ON "Appointment"("expiresAt")
+WHERE "status" = 'PENDING' AND "paymentStatus" = 'PENDING_SIGNAL' AND "receiptReportedAt" IS NULL AND "expiresAt" IS NOT NULL;
 
 -- AddForeignKey
 DO $$

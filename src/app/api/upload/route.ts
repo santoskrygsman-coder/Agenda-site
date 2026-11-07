@@ -143,27 +143,52 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Fallback local em desenvolvimento (preserva compatibilidade sem Supabase configurado)
-    const uploadDir = path.join(
-      process.cwd(),
-      "public",
-      "uploads",
-      "services"
-    );
-    await fs.mkdir(uploadDir, { recursive: true });
-    const filePath = path.join(uploadDir, uniqueName);
-    await fs.writeFile(filePath, buffer);
+    // 2. Em ambiente serverless de produção (Netlify), o sistema de arquivos é somente leitura
+    const isServerlessProduction =
+      process.env.NETLIFY === "true" || process.env.NODE_ENV === "production";
+    if (isServerlessProduction) {
+      return NextResponse.json(
+        {
+          error:
+            "Armazenamento em nuvem (Supabase Storage) requer SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY configuradas nas variáveis de ambiente de produção.",
+        },
+        { status: 503 }
+      );
+    }
 
-    const publicUrl = `/uploads/services/${uniqueName}`;
-    return NextResponse.json(
-      { url: publicUrl, storage: "local" },
-      { status: 201 }
-    );
+    // 3. Fallback local exclusivamente em desenvolvimento
+    try {
+      const uploadDir = path.join(
+        process.cwd(),
+        "public",
+        "uploads",
+        "services"
+      );
+      await fs.mkdir(uploadDir, { recursive: true });
+      const filePath = path.join(uploadDir, uniqueName);
+      await fs.writeFile(filePath, buffer);
+
+      const publicUrl = `/uploads/services/${uniqueName}`;
+      return NextResponse.json(
+        { url: publicUrl, storage: "local" },
+        { status: 201 }
+      );
+    } catch (fsError) {
+      console.error("Local filesystem write failed:", fsError);
+      return NextResponse.json(
+        {
+          error:
+            "Sistema de arquivos somente leitura. Configure SUPABASE_SERVICE_ROLE_KEY nas variáveis de ambiente para enviar fotos para o Supabase Storage.",
+        },
+        { status: 503 }
+      );
+    }
   } catch (error) {
     console.error("Error uploading HD service photo:", error);
-    return NextResponse.json(
-      { error: "Erro ao salvar fotografia em alta definição." },
-      { status: 500 }
-    );
+    const message =
+      error instanceof Error && error.message.includes("Supabase Storage")
+        ? error.message
+        : "Erro ao salvar fotografia em alta definição.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

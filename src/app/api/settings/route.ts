@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
+import { getCachedSettings, setCachedSettings } from "@/lib/cache";
 
 export async function GET() {
   try {
-    let settings = await prisma.settings.findFirst();
-    if (!settings) {
-      settings = await prisma.settings.create({ data: {} });
-    }
+    const settings = await getCachedSettings();
     return NextResponse.json({
       professionalName: settings.professionalName,
       specialty: settings.specialty,
@@ -38,7 +36,7 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    let settings = await prisma.settings.findFirst();
+    let settings = await getCachedSettings();
 
     const data: Record<string, unknown> = {};
     if (body.professionalName !== undefined) {
@@ -65,6 +63,15 @@ export async function PUT(request: Request) {
     if (body.holdMinutes !== undefined) {
       data.holdMinutes = Math.max(1, Number(body.holdMinutes) || 15);
     }
+    if (body.minAdvanceMinutes !== undefined) {
+      data.minAdvanceMinutes = Math.max(0, Number(body.minAdvanceMinutes) || 0);
+    }
+    if (body.maxDaysAhead !== undefined) {
+      data.maxDaysAhead = Math.max(1, Number(body.maxDaysAhead) || 60);
+    }
+    if (body.pendingBlocksSlot !== undefined) {
+      data.pendingBlocksSlot = Boolean(body.pendingBlocksSlot);
+    }
 
     if (settings) {
       settings = await prisma.settings.update({
@@ -75,6 +82,7 @@ export async function PUT(request: Request) {
       settings = await prisma.settings.create({ data });
     }
 
+    setCachedSettings(settings);
     return NextResponse.json(settings);
   } catch (error) {
     console.error("Error updating settings:", error);

@@ -1,8 +1,37 @@
-import { withAuth } from "next-auth/middleware";
+import { withAuth, NextRequestWithAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
+function isPublicApiRoute(path: string, method: string): boolean {
+  return (
+    path.startsWith("/api/auth") ||
+    (path === "/api/services" && method === "GET") ||
+    (path === "/api/availability" && method === "GET") ||
+    (path === "/api/settings" && method === "GET") ||
+    (path === "/api/working-hours" && method === "GET") ||
+    (path === "/api/appointments" && method === "POST") ||
+    (Boolean(path.match(/^\/api\/appointments\/[^/]+\/receipt$/)) &&
+      method === "POST")
+  );
+}
+
 export default withAuth(
-  function middleware(_req) {
+  function middleware(req: NextRequestWithAuth) {
+    const path = req.nextUrl.pathname;
+
+    if (
+      path.startsWith("/api/") &&
+      !isPublicApiRoute(path, req.method) &&
+      !req.nextauth.token
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Sessão expirada ou não autorizada. Faça login novamente no painel da profissional.",
+        },
+        { status: 401 }
+      );
+    }
+
     return NextResponse.next();
   },
   {
@@ -10,22 +39,14 @@ export default withAuth(
       authorized: ({ req, token }) => {
         const path = req.nextUrl.pathname;
 
-        // Rotas públicas permitidas para o fluxo da cliente
-        if (
-          path.startsWith("/api/auth") ||
-          (path === "/api/services" && req.method === "GET") ||
-          (path === "/api/availability" && req.method === "GET") ||
-          (path === "/api/settings" && req.method === "GET") ||
-          (path === "/api/working-hours" && req.method === "GET") ||
-          (path === "/api/appointments" && req.method === "POST") ||
-          (path.match(/^\/api\/appointments\/[^/]+\/receipt$/) &&
-            req.method === "POST")
-        ) {
+        // Para rotas /api/*, deixamos a função middleware acima responder com JSON 401
+        // em vez de redirecionar (307 -> 200 HTML /login), evitando falsos positivos no fetch().
+        if (path.startsWith("/api/")) {
           return true;
         }
 
-        // Todas as rotas /admin e demais rotas de mutação / listagem exigem autenticação
-        if (path.startsWith("/admin") || path.startsWith("/api/")) {
+        // Todas as páginas /admin exigem autenticação e redirecionam para /login quando não autenticadas
+        if (path.startsWith("/admin")) {
           return !!token;
         }
 

@@ -41,19 +41,19 @@ export default function ChooseServicePage() {
         rightType="botanical"
       />
 
-      <div className="px-4 pt-1 pb-6 space-y-2.5 flex-1 relative">
-        <div className="flex items-center justify-between px-1 pb-0.5">
+      <div className="px-3.5 min-[375px]:px-4 pt-1 pb-[max(1.5rem,env(safe-area-inset-bottom))] space-y-2.5 flex-1 relative">
+        <div className="flex flex-wrap items-center justify-between gap-1.5 px-1 pb-0.5">
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#6E5850]">
             Extensão e Design de Cílios
           </span>
           <span className="inline-flex items-center gap-1 bg-[#FAF5F1] border border-[#E5D4C9] rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-[#4E3B35]">
-            <Clock size={11} className="text-[#B87472]" />
-            {todayOpenStatus}
+            <Clock size={11} className="text-[#B87472] shrink-0" />
+            <span>{todayOpenStatus}</span>
           </span>
         </div>
 
-        {/* Abas de filtro rápido por categoria */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+        {/* Abas de filtro rápido por categoria com área de toque confortável */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
           {[
             { key: "todos", label: "Todos" },
             { key: "cilios", label: "Extensão de Cílios" },
@@ -74,7 +74,7 @@ export default function ChooseServicePage() {
                       | "manutencao"
                   )
                 }
-                className={`px-3 py-1 rounded-full text-[11.5px] shrink-0 transition-colors ${
+                className={`min-h-[40px] px-3.5 py-2 rounded-full text-[12px] shrink-0 transition-colors touch-manipulation ${
                   active
                     ? "bg-[#B87472] text-white font-semibold shadow-2xs"
                     : "bg-[#FAF5F1] border border-[#E5D4C9] text-[#4E3B35] font-medium"
@@ -86,18 +86,20 @@ export default function ChooseServicePage() {
           })}
         </div>
 
-        {filteredServices.map((service) => (
-          <ServiceCard
-            key={service.id}
-            service={service}
-            mode="client"
-            onSelect={(svc) => {
-              setSelectedServiceById(svc.id);
-              router.push("/agendar/data");
-            }}
-          />
-        ))}
-        <BotanicalSprigRight className="w-[80px] h-[55px] absolute right-1 bottom-1 opacity-60" />
+        <div className="space-y-2.5">
+          {filteredServices.map((service) => (
+            <ServiceCard
+              key={service.id}
+              service={service}
+              mode="client"
+              onSelect={(svc) => {
+                setSelectedServiceById(svc.id);
+                router.push("/agendar/data");
+              }}
+            />
+          ))}
+        </div>
+        <BotanicalSprigRight className="w-[80px] h-[55px] absolute right-1 bottom-1 opacity-60 pointer-events-none" />
       </div>
     </MobileContainer>
   );

@@ -114,11 +114,10 @@ export default function ClientDataFormPage() {
         rightType="botanical"
       />
 
-      <div className="px-5 pt-2 flex-1 flex flex-col justify-between">
-        <div>
+      <div className="px-4 min-[375px]:px-5 pt-2 flex-1 flex flex-col justify-between">
+        <div className="pb-4">
           <p className="text-[13.5px] leading-[1.45] text-[#3D2A24] mb-3.5">
-            Preencha seus dados obrigatórios para finalizar
-            <br />o agendamento.
+            Preencha seus dados obrigatórios para finalizar o agendamento.
           </p>
 
           {serverError && (
@@ -132,6 +131,8 @@ export default function ClientDataFormPage() {
             <FormField
               icon={<User size={18} strokeWidth={1.8} />}
               placeholder="Seu nome completo (nome e sobrenome) *"
+              autoComplete="name"
+              enterKeyHint="next"
               value={clientData.name}
               onBlur={() => setTouched((prev) => ({ ...prev, name: true }))}
               error={touched.name ? nameError : null}
@@ -147,6 +148,9 @@ export default function ClientDataFormPage() {
               rightIcon={<WhatsAppCircleIcon size={20} variant="dark" />}
               placeholder="WhatsApp com DDD: (73) 99999-9999 *"
               type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              enterKeyHint="next"
               value={clientData.phone}
               onBlur={() => setTouched((prev) => ({ ...prev, phone: true }))}
               error={touched.phone ? phoneError : null}
@@ -164,6 +168,9 @@ export default function ClientDataFormPage() {
               icon={<Mail size={18} strokeWidth={1.8} />}
               placeholder="E-mail (opcional)"
               type="email"
+              inputMode="email"
+              autoComplete="email"
+              enterKeyHint="next"
               value={clientData.email}
               onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
               error={touched.email ? emailError : null}
@@ -185,10 +192,10 @@ export default function ClientDataFormPage() {
               }
             />
 
-            {/* Aceite obrigatório das políticas de agendamento */}
+            {/* Aceite obrigatório das políticas de agendamento (área de toque ampla) */}
             <div>
               <label
-                className={`flex items-start gap-2.5 p-3 rounded-[14px] border cursor-pointer transition-colors ${
+                className={`flex items-start gap-3 p-3.5 rounded-[14px] border cursor-pointer transition-colors touch-manipulation ${
                   touched.policies && !clientData.acceptedPolicies
                     ? "bg-[#FDF4F4] border-[#C95B59]"
                     : "bg-[#FAF5F0] border-[#E6D8CF]"
@@ -212,7 +219,7 @@ export default function ClientDataFormPage() {
                   className="sr-only"
                 />
                 <span
-                  className={`mt-0.5 w-5 h-5 rounded-[6px] border flex items-center justify-center shrink-0 transition-colors ${
+                  className={`mt-0.5 w-6 h-6 rounded-[7px] border flex items-center justify-center shrink-0 transition-colors ${
                     clientData.acceptedPolicies
                       ? "bg-[#B87472] border-[#B87472] text-white"
                       : touched.policies && !clientData.acceptedPolicies
@@ -221,16 +228,17 @@ export default function ClientDataFormPage() {
                   }`}
                 >
                   {clientData.acceptedPolicies && (
-                    <Check size={13} strokeWidth={3} />
+                    <Check size={14} strokeWidth={3} />
                   )}
                 </span>
-                <span className="text-[12px] leading-[1.4] text-[#3D2A24]">
+                <span className="text-[12.5px] leading-[1.4] text-[#3D2A24]">
                   Li e aceito as{" "}
                   <strong className="text-[#2D1C18]">
                     políticas de agendamento
                   </strong>
-                  : confirmação do horário mediante pagamento do sinal ({signalPct}
-                  %) via Pix e envio manual do comprovante pelo WhatsApp. *
+                  : confirmação do horário mediante pagamento do sinal (
+                  {signalPct}%) via Pix e envio manual do comprovante pelo
+                  WhatsApp. *
                 </span>
               </label>
 
@@ -256,7 +264,7 @@ export default function ClientDataFormPage() {
         </div>
 
         {/* Bottom Eye & Botanical Footer Blend */}
-        <div className="relative -mx-5 mt-3 h-[120px] overflow-hidden shrink-0">
+        <div className="relative -mx-4 min-[375px]:-mx-5 mt-1 h-[110px] overflow-hidden shrink-0 pointer-events-none">
           <img
             src="/images/footer-dados-eye.png"
             alt="Detalhe cílios e folhas botânicas"

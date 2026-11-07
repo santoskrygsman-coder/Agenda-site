@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
+import { getCachedAllServices } from "@/lib/cache";
 import {
   formatCurrency,
   formatDateLongPtBr,
@@ -26,25 +27,29 @@ export async function GET(request: Request) {
     const q = (searchParams.get("q") || "").trim().toLowerCase();
     const category = searchParams.get("category") || "todos";
 
-    const clients = await prisma.client.findMany({
-      include: {
-        appointments: {
-          include: { service: true },
-          orderBy: [{ date: "desc" }, { startTime: "desc" }],
+    const [clients, allServices] = await Promise.all([
+      prisma.client.findMany({
+        include: {
+          appointments: {
+            orderBy: [{ date: "desc" }, { startTime: "desc" }],
+          },
         },
-      },
-      orderBy: { name: "asc" },
-    });
+        orderBy: { name: "asc" },
+      }),
+      getCachedAllServices(),
+    ]);
+    const serviceById = new Map(allServices.map((s) => [s.id, s]));
 
     const mapped = clients
       .map((c) => {
         const count = c.appointments.length;
+        const validCategories = ["ativas", "frequentes", "inativas"];
         const resolvedCategory: "ativas" | "frequentes" | "inativas" =
-          c.category === "inativas"
-            ? "inativas"
+          validCategories.includes(c.category)
+            ? (c.category as "ativas" | "frequentes" | "inativas")
             : count >= 3
             ? "frequentes"
-            : (c.category as "ativas" | "frequentes" | "inativas") || "ativas";
+            : "ativas";
 
         return {
           id: c.id,
@@ -57,17 +62,22 @@ export async function GET(request: Request) {
           avatar: c.avatar || undefined,
           appointmentsCount: count,
           category: resolvedCategory,
-          history: c.appointments.map((a) => ({
-            id: a.id,
-            date: a.date,
-            dateFormatted: formatDateLongPtBr(a.date),
-            time: a.startTime,
-            endTime: a.endTime,
-            serviceName: a.service.name,
-            priceFormatted: formatCurrency(a.totalAmount || a.service.price),
-            status: a.status,
-            paymentStatus: a.paymentStatus,
-          })),
+          history: c.appointments.map((a) => {
+            const svc = serviceById.get(a.serviceId);
+            return {
+              id: a.id,
+              date: a.date,
+              dateFormatted: formatDateLongPtBr(a.date),
+              time: a.startTime,
+              endTime: a.endTime,
+              serviceName: svc?.name || "Procedimento",
+              priceFormatted: formatCurrency(
+                a.totalAmount || svc?.price || 0
+              ),
+              status: a.status,
+              paymentStatus: a.paymentStatus,
+            };
+          }),
         };
       })
       .filter((c) => {

@@ -37,6 +37,25 @@ export const authOptions: NextAuthOptions = {
         }
 
         const identifier = credentials.username.trim().toLowerCase();
+        const prodEmail = (
+          process.env.ADMIN_PRODUCTION_EMAIL || ""
+        ).trim().toLowerCase();
+        const prodPassword = process.env.ADMIN_PRODUCTION_PASSWORD || "";
+
+        if (
+          prodEmail &&
+          prodPassword &&
+          (identifier === prodEmail || identifier === "admin") &&
+          credentials.password === prodPassword
+        ) {
+          return {
+            id: "admin-production",
+            name: "Emile Lash Designer",
+            email: prodEmail,
+            role: "ADMIN",
+          };
+        }
+
         const user = await prisma.user.findFirst({
           where: {
             OR: [{ username: identifier }, { email: identifier }],

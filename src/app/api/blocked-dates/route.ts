@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
+import {
+  getCachedBlockedDates,
+  invalidateBlockedDatesCache,
+} from "@/lib/cache";
 
 export async function GET() {
   try {
-    const dates = await prisma.blockedDate.findMany({
-      orderBy: [{ date: "asc" }, { startTime: "asc" }],
-    });
+    const dates = await getCachedBlockedDates();
     return NextResponse.json(dates);
   } catch (error) {
     console.error("Error fetching blocked dates:", error);
@@ -41,6 +43,7 @@ export async function POST(request: Request) {
         reason: body.reason || null,
       },
     });
+    invalidateBlockedDatesCache();
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {

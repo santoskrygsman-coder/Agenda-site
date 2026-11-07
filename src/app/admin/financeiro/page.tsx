@@ -67,6 +67,9 @@ export default function AdminFinancialPage() {
   const [expAmount, setExpAmount] = useState("");
   const [expDate, setExpDate] = useState(() => getDefaultBookingDate().iso);
   const [saving, setSaving] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [feedbackMsg, setFeedbackMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
 
   const isExpenseValid =
     expDesc.trim().length >= 2 &&
@@ -77,7 +80,9 @@ export default function AdminFinancialPage() {
   const loadFinance = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/finance?month=${selectedMonth}`);
+      const res = await fetch(`/api/finance?month=${selectedMonth}`, {
+        cache: "no-store",
+      });
       if (res.ok) {
         const data = await res.json();
         setReceivedFormatted(data.receivedFormatted || "R$ 0,00");
@@ -108,40 +113,79 @@ export default function AdminFinancialPage() {
   };
 
   const handleConfirmSignalManual = async (appointmentId: string) => {
-    const res = await fetch(`/api/appointments/${appointmentId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        paymentStatus: "SIGNAL_PAID",
-        status: "CONFIRMED",
-      }),
-    });
-    if (res.ok) {
-      loadFinance();
+    setActionLoadingId(appointmentId);
+    setErrorMsg("");
+    try {
+      const res = await fetch(`/api/appointments/${appointmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentStatus: "SIGNAL_PAID",
+          status: "CONFIRMED",
+        }),
+      });
+      if (res.ok) {
+        setFeedbackMsg("Sinal Pix confirmado com sucesso!");
+        setTimeout(() => setFeedbackMsg(""), 3000);
+        await loadFinance();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setErrorMsg(data.error || "Não foi possível confirmar o sinal.");
+      }
+    } catch {
+      setErrorMsg("Erro de conexão ao confirmar sinal.");
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
   const handleCompleteFullPayment = async (appointmentId: string) => {
-    const res = await fetch(`/api/appointments/${appointmentId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        paymentStatus: "FULL_PAID",
-        status: "COMPLETED",
-      }),
-    });
-    if (res.ok) {
-      loadFinance();
+    setActionLoadingId(appointmentId);
+    setErrorMsg("");
+    try {
+      const res = await fetch(`/api/appointments/${appointmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentStatus: "FULL_PAID",
+          status: "COMPLETED",
+        }),
+      });
+      if (res.ok) {
+        setFeedbackMsg("Pagamento integral (100%) registrado com sucesso!");
+        setTimeout(() => setFeedbackMsg(""), 3000);
+        await loadFinance();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setErrorMsg(data.error || "Não foi possível registrar o recebimento.");
+      }
+    } catch {
+      setErrorMsg("Erro de conexão ao registrar recebimento.");
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
   const handleDeleteExpense = async (expenseId: string) => {
-    const res = await fetch(
-      `/api/finance?expenseId=${encodeURIComponent(expenseId)}`,
-      { method: "DELETE" }
-    );
-    if (res.ok) {
-      loadFinance();
+    setActionLoadingId(expenseId);
+    setErrorMsg("");
+    try {
+      const res = await fetch(
+        `/api/finance?expenseId=${encodeURIComponent(expenseId)}`,
+        { method: "DELETE" }
+      );
+      if (res.ok) {
+        setFeedbackMsg("Despesa excluída com sucesso.");
+        setTimeout(() => setFeedbackMsg(""), 2500);
+        await loadFinance();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setErrorMsg(data.error || "Erro ao excluir despesa.");
+      }
+    } catch {
+      setErrorMsg("Erro de conexão ao excluir despesa.");
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -151,22 +195,32 @@ export default function AdminFinancialPage() {
     if (!expDesc.trim() || isNaN(parsedAmount) || parsedAmount <= 0) return;
 
     setSaving(true);
-    const res = await fetch("/api/finance", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        description: expDesc.trim(),
-        amount: parsedAmount,
-        date: expDate,
-      }),
-    });
-    setSaving(false);
-
-    if (res.ok) {
-      setExpenseModalOpen(false);
-      setExpDesc("");
-      setExpAmount("");
-      loadFinance();
+    setErrorMsg("");
+    try {
+      const res = await fetch("/api/finance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: expDesc.trim(),
+          amount: parsedAmount,
+          date: expDate,
+        }),
+      });
+      if (res.ok) {
+        setExpenseModalOpen(false);
+        setExpDesc("");
+        setExpAmount("");
+        setFeedbackMsg("Despesa registrada com sucesso!");
+        setTimeout(() => setFeedbackMsg(""), 3000);
+        await loadFinance();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setErrorMsg(data.error || "Erro ao registrar despesa.");
+      }
+    } catch {
+      setErrorMsg("Erro de conexão ao salvar despesa.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -176,54 +230,72 @@ export default function AdminFinancialPage() {
     <MobileContainer showAdminNav activeAdminTab="financeiro">
       <PageHeader title="Financeiro" leftType="menu" rightType="botanical" />
 
-      <div className="px-5 pt-1 pb-6 flex-1 flex flex-col justify-between relative">
+      <div className="px-4 min-[375px]:px-5 pt-1 pb-6 flex-1 flex flex-col justify-between relative">
         <div>
           {/* Dynamic Month Selector with Prev/Next */}
-          <div className="flex items-center justify-between mb-3.5">
-            <div className="flex items-center gap-1.5 bg-[#FAF5F1] border border-[#E6D8CF] rounded-full px-2 py-1 shadow-2xs">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3.5">
+            <div className="flex items-center gap-1 bg-[#FAF5F1] border border-[#E6D8CF] rounded-full p-1 shadow-2xs">
               <button
                 type="button"
                 onClick={() => shiftMonth(-1)}
-                className="w-6 h-6 rounded-full flex items-center justify-center text-[#5C4841] hover:bg-[#EADCD3]"
+                className="w-9 h-9 rounded-full flex items-center justify-center text-[#5C4841] hover:bg-[#EADCD3] active:scale-95 transition touch-manipulation"
                 aria-label="Mês anterior"
               >
-                <ChevronLeft size={14} />
+                <ChevronLeft size={16} />
               </button>
-              <span className="px-2 text-[13px] font-bold text-[#2D1C18]">
+              <span className="px-1.5 text-[12.5px] min-[375px]:text-[13px] font-bold text-[#2D1C18]">
                 {currentMonthLabel}
               </span>
               <button
                 type="button"
                 onClick={() => shiftMonth(1)}
-                className="w-6 h-6 rounded-full flex items-center justify-center text-[#5C4841] hover:bg-[#EADCD3]"
+                className="w-9 h-9 rounded-full flex items-center justify-center text-[#5C4841] hover:bg-[#EADCD3] active:scale-95 transition touch-manipulation"
                 aria-label="Próximo mês"
               >
-                <ChevronRight size={14} />
+                <ChevronRight size={16} />
               </button>
             </div>
 
             <button
               type="button"
               onClick={() => {
-                setExpDate(`${selectedMonth}-14`);
+                const todayIso = getDefaultBookingDate().iso;
+                setExpDate(
+                  todayIso.startsWith(selectedMonth)
+                    ? todayIso
+                    : `${selectedMonth}-01`
+                );
+                setErrorMsg("");
                 setExpenseModalOpen(true);
               }}
-              className="px-3 py-1.5 rounded-full bg-[#FAF5F1] border border-[#E6D8CF] flex items-center gap-1 text-[12px] font-semibold text-[#5C4841] hover:bg-[#EADCD3]"
+              className="min-h-[40px] px-3.5 py-1.5 rounded-full bg-[#FAF5F1] border border-[#E6D8CF] flex items-center gap-1 text-[12.5px] font-semibold text-[#5C4841] hover:bg-[#EADCD3] active:scale-95 transition touch-manipulation"
               aria-label="Registrar nova despesa"
             >
-              <Plus size={13} />
+              <Plus size={14} />
               <span>Despesa</span>
             </button>
           </div>
 
+          {feedbackMsg && (
+            <div className="mb-3 bg-[#D8EFDC] border border-[#BDE2C4] text-[#2E8540] text-[12px] font-semibold px-3 py-2 rounded-[12px] text-center">
+              {feedbackMsg}
+            </div>
+          )}
+
+          {errorMsg && (
+            <div className="mb-3 bg-[#F3D8D8] border border-[#E2B8B8] text-[#B84A48] text-[12px] font-semibold px-3 py-2 rounded-[12px] text-center">
+              {errorMsg}
+            </div>
+          )}
+
           {/* Financial Summary Card (Blush Pink + Warm Cream) */}
           <div className="rounded-[20px] overflow-hidden border border-[#E8CFD0] shadow-[0_2px_10px_rgba(45,28,24,0.03)]">
-            <div className="bg-[#F5DADC] px-4 py-3.5 flex items-center justify-between">
+            <div className="bg-[#F5DADC] px-4 py-3.5 flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-[12.5px] text-[#4E3835] font-medium">
+                <p className="text-[12px] min-[375px]:text-[12.5px] text-[#4E3835] font-medium">
                   Recebimentos ({currentMonthLabel})
                 </p>
-                <p className="text-[24px] font-bold text-[#2D1C18] mt-0.5 tracking-tight">
+                <p className="text-[22px] min-[375px]:text-[24px] font-bold text-[#2D1C18] mt-0.5 tracking-tight">
                   {receivedFormatted}
                 </p>
               </div>
@@ -265,10 +337,10 @@ export default function AdminFinancialPage() {
               <button
                 type="button"
                 onClick={() => setExpenseModalOpen(true)}
-                className="text-[12.5px] font-medium text-[#B87472] flex items-center gap-0.5"
+                className="min-h-[38px] px-2 text-[12.5px] font-semibold text-[#B87472] flex items-center gap-0.5 touch-manipulation"
               >
                 <span>+ Despesa</span>
-                <ChevronRight size={14} />
+                <ChevronRight size={15} />
               </button>
             </div>
 
@@ -296,7 +368,7 @@ export default function AdminFinancialPage() {
                           {entry.title}
                         </p>
                         {entry.subtitle && (
-                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <span
                               className={`text-[12px] font-medium ${
                                 entry.subtitleType === "pending"
@@ -311,15 +383,20 @@ export default function AdminFinancialPage() {
                               entry.appointmentId && (
                                 <button
                                   type="button"
+                                  disabled={
+                                    actionLoadingId === entry.appointmentId
+                                  }
                                   onClick={() =>
                                     handleConfirmSignalManual(
                                       entry.appointmentId!
                                     )
                                   }
-                                  className="inline-flex items-center gap-1 text-[11px] bg-[#D8EFDC] text-[#2E8540] font-bold px-2 py-0.5 rounded-full hover:bg-[#C6E8CC]"
+                                  className="min-h-[34px] inline-flex items-center gap-1 text-[11.5px] bg-[#D8EFDC] text-[#2E8540] font-bold px-2.5 py-1 rounded-full hover:bg-[#C6E8CC] active:scale-95 transition touch-manipulation disabled:opacity-55"
                                 >
-                                  <Check size={11} />
-                                  Confirmar Pix
+                                  <Check size={12} />
+                                  {actionLoadingId === entry.appointmentId
+                                    ? "Confirmando..."
+                                    : "Confirmar Pix"}
                                 </button>
                               )}
 
@@ -327,15 +404,20 @@ export default function AdminFinancialPage() {
                               entry.appointmentId && (
                                 <button
                                   type="button"
+                                  disabled={
+                                    actionLoadingId === entry.appointmentId
+                                  }
                                   onClick={() =>
                                     handleCompleteFullPayment(
                                       entry.appointmentId!
                                     )
                                   }
-                                  className="inline-flex items-center gap-1 text-[11px] bg-[#EFE3DC] text-[#3D2923] font-semibold px-2 py-0.5 rounded-full hover:bg-[#E4D2C7]"
+                                  className="min-h-[34px] inline-flex items-center gap-1 text-[11.5px] bg-[#EFE3DC] text-[#3D2923] font-semibold px-2.5 py-1 rounded-full hover:bg-[#E4D2C7] active:scale-95 transition touch-manipulation disabled:opacity-55"
                                 >
-                                  <Check size={11} />
-                                  Receber restante
+                                  <Check size={12} />
+                                  {actionLoadingId === entry.appointmentId
+                                    ? "Registrando..."
+                                    : "Receber restante"}
                                 </button>
                               )}
                           </div>
@@ -343,7 +425,7 @@ export default function AdminFinancialPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0 pt-0.5">
+                    <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
                       <span
                         className={`font-bold text-[13px] ${
                           entry.type === "income"
@@ -356,12 +438,13 @@ export default function AdminFinancialPage() {
                       {entry.expenseId && (
                         <button
                           type="button"
+                          disabled={actionLoadingId === entry.expenseId}
                           onClick={() => handleDeleteExpense(entry.expenseId!)}
-                          className="p-1 text-[#A87573] hover:text-[#B84A48]"
+                          className="w-9 h-9 rounded-full flex items-center justify-center text-[#A87573] hover:text-[#B84A48] hover:bg-[#F3D8D8]/60 active:scale-95 transition touch-manipulation disabled:opacity-50"
                           aria-label="Excluir despesa"
                           title="Excluir despesa"
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={14} />
                         </button>
                       )}
                     </div>
@@ -372,13 +455,13 @@ export default function AdminFinancialPage() {
           </div>
         </div>
 
-        <BotanicalSprigRight className="w-[80px] h-[55px] absolute -right-3 -bottom-2 opacity-65" />
+        <BotanicalSprigRight className="w-[80px] h-[55px] absolute -right-3 -bottom-2 opacity-65 pointer-events-none" />
       </div>
 
       {/* Modal de Registro de Despesa */}
       {expenseModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#2D1C18]/45 p-3">
-          <div className="w-full max-w-[390px] bg-[#F8F1EB] border border-[#E6D8CF] rounded-[22px] p-5 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#2D1C18]/45 p-2.5 min-[375px]:p-3">
+          <div className="w-full max-w-[410px] max-h-[88dvh] overflow-y-auto bg-[#F8F1EB] border border-[#E6D8CF] rounded-[22px] p-4 min-[375px]:p-5 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-[#E6D8CF]">
               <h3 className="font-serif text-[18px] font-semibold text-[#2D1C18]">
                 Registrar despesa
@@ -386,16 +469,17 @@ export default function AdminFinancialPage() {
               <button
                 type="button"
                 onClick={() => setExpenseModalOpen(false)}
-                className="w-7 h-7 rounded-full bg-[#EADCD3] flex items-center justify-center text-[#2D1C18]"
+                aria-label="Fechar modal"
+                className="w-10 h-10 rounded-full bg-[#EADCD3] flex items-center justify-center text-[#2D1C18] active:scale-95 transition touch-manipulation"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleAddExpense} className="mt-3 space-y-3">
               <div>
                 <label className="block text-[12px] font-semibold text-[#4E3B35] mb-1">
-                  Descrição (ex: Materiais, Cola, Fios)
+                  Descrição (ex: Materiais, Cola, Fios) *
                 </label>
                 <input
                   type="text"
@@ -403,36 +487,39 @@ export default function AdminFinancialPage() {
                   value={expDesc}
                   onChange={(e) => setExpDesc(e.target.value)}
                   placeholder="Materiais"
-                  className="w-full bg-[#FAF5F1] border border-[#E4D5CB] rounded-[11px] px-3 py-2 text-[13.5px]"
+                  enterKeyHint="next"
+                  className="w-full min-h-[46px] bg-[#FAF5F1] border border-[#E4D5CB] rounded-[12px] px-3 py-2.5 text-[14px] text-[#2D1C18]"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[12px] font-semibold text-[#4E3B35] mb-1">
-                    Valor (R$)
+                    Valor (R$) *
                   </label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     step="0.01"
                     min="0.01"
                     required
                     value={expAmount}
                     onChange={(e) => setExpAmount(e.target.value)}
                     placeholder="100,00"
-                    className="w-full bg-[#FAF5F1] border border-[#E4D5CB] rounded-[11px] px-3 py-2 text-[13.5px]"
+                    enterKeyHint="next"
+                    className="w-full min-h-[46px] bg-[#FAF5F1] border border-[#E4D5CB] rounded-[12px] px-3 py-2.5 text-[14px] text-[#2D1C18]"
                   />
                 </div>
                 <div>
                   <label className="block text-[12px] font-semibold text-[#4E3B35] mb-1">
-                    Data
+                    Data *
                   </label>
                   <input
                     type="date"
                     required
                     value={expDate}
                     onChange={(e) => setExpDate(e.target.value)}
-                    className="w-full bg-[#FAF5F1] border border-[#E4D5CB] rounded-[11px] px-3 py-2 text-[13.5px]"
+                    className="w-full min-h-[46px] bg-[#FAF5F1] border border-[#E4D5CB] rounded-[12px] px-3 py-2.5 text-[13.5px] text-[#2D1C18]"
                   />
                 </div>
               </div>

@@ -22,6 +22,35 @@ export async function PATCH(
     const { id } = await props.params;
     const body = await request.json();
 
+    const needsTransactionValidation =
+      Boolean(body.date) ||
+      Boolean(body.startTime) ||
+      body.status === "CONFIRMED" ||
+      body.paymentStatus === "SIGNAL_PAID" ||
+      body.paymentStatus === "FULL_PAID";
+
+    // Fast path para cancelamento ou atualização simples (1 única query SQL em vez de transação multi-roundtrip)
+    if (!needsTransactionValidation) {
+      const fastUpdate: Record<string, unknown> = {};
+      if (body.status !== undefined) fastUpdate.status = body.status;
+      if (body.notes !== undefined) fastUpdate.notes = body.notes;
+      if (body.whatsappStatus !== undefined) {
+        fastUpdate.whatsappStatus = body.whatsappStatus;
+      }
+      try {
+        const updatedFast = await prisma.appointment.update({
+          where: { id },
+          data: fastUpdate,
+        });
+        return NextResponse.json(updatedFast);
+      } catch {
+        return NextResponse.json(
+          { error: "Agendamento não encontrado" },
+          { status: 404 }
+        );
+      }
+    }
+
     const updated = await withBookingLock(() =>
       prisma.$transaction(async (tx) => {
         const existing = await tx.appointment.findUnique({
@@ -53,7 +82,14 @@ export async function PATCH(
             nextStartTime,
             existing.service.duration,
             existing.id,
-            tx
+            tx,
+            isRescheduling
+              ? { allowPastToday: true }
+              : {
+                  allowPastToday: true,
+                  allowPastDates: true,
+                  ignoreWorkingHours: true,
+                }
           );
           if (!available) {
             throw new Error("SLOT_UNAVAILABLE");
@@ -103,13 +139,17 @@ export async function PATCH(
     return NextResponse.json(updated);
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "";
+    const prismaCode =
+      error && typeof error === "object" && "code" in error
+        ? String((error as { code?: unknown }).code)
+        : "";
     if (msg === "NOT_FOUND") {
       return NextResponse.json(
         { error: "Agendamento não encontrado" },
         { status: 404 }
       );
     }
-    if (msg === "SLOT_UNAVAILABLE") {
+    if (msg === "SLOT_UNAVAILABLE" || prismaCode === "P2002") {
       return NextResponse.json(
         {
           error:

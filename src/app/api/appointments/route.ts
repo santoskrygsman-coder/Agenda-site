@@ -15,7 +15,13 @@ import {
   formatPhoneDisplay,
   normalizePhoneDigits,
 } from "@/lib/formatters";
-import { validateBookingPayload } from "@/lib/validation";
+import {
+  validateBookingPayload,
+} from "@/lib/validation";
+import {
+  getCachedAllServices,
+  getCachedSettings,
+} from "@/lib/cache";
 
 function mapStatusToUi(
   status: string,
@@ -52,13 +58,16 @@ export async function GET(request: Request) {
     await expireOverduePendingAppointments();
 
     const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
     const date = searchParams.get("date");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const month = searchParams.get("month"); // YYYY-MM
 
     const whereClause: Record<string, unknown> = {};
-    if (date) {
+    if (id) {
+      whereClause.id = id;
+    } else if (date) {
       whereClause.date = date;
     } else if (startDate && endDate) {
       whereClause.date = { gte: startDate, lte: endDate };
@@ -66,20 +75,25 @@ export async function GET(request: Request) {
       whereClause.date = { startsWith: month };
     }
 
-    const appointments = await prisma.appointment.findMany({
-      where: whereClause,
-      include: {
-        client: true,
-        service: true,
-      },
-      orderBy: [{ date: "asc" }, { startTime: "asc" }],
-    });
+    const [appointments, allServices] = await Promise.all([
+      prisma.appointment.findMany({
+        where: whereClause,
+        include: {
+          client: true,
+        },
+        orderBy: [{ date: "asc" }, { startTime: "asc" }],
+      }),
+      getCachedAllServices(),
+    ]);
+    const serviceById = new Map(allServices.map((s) => [s.id, s]));
 
     const mapped = appointments.map((a) => {
       const { uiStatus, statusLabel } = mapStatusToUi(
         a.status,
         a.paymentStatus
       );
+      const svc = serviceById.get(a.serviceId);
+      const svcPrice = svc?.price ?? a.totalAmount ?? 0;
       return {
         id: a.id,
         date: a.date,
@@ -91,10 +105,10 @@ export async function GET(request: Request) {
         clientPhone: formatPhoneDisplay(a.client.phone),
         clientRawPhone: a.client.phone,
         serviceId: a.serviceId,
-        serviceName: a.service.name,
-        serviceDuration: a.service.duration,
-        price: a.totalAmount || a.service.price,
-        priceFormatted: formatCurrency(a.totalAmount || a.service.price),
+        serviceName: svc?.name || "Procedimento",
+        serviceDuration: svc?.duration || 90,
+        price: a.totalAmount || svcPrice,
+        priceFormatted: formatCurrency(a.totalAmount || svcPrice),
         signalAmount: a.signalAmount,
         signalFormatted: formatCurrency(a.signalAmount),
         dbStatus: a.status,
@@ -159,19 +173,58 @@ export async function POST(request: Request) {
 
     const normalizedPhone = normalizePhoneDigits(phone);
 
+    const [allCachedServices, cachedSettings] = await Promise.all([
+      getCachedAllServices(),
+      getCachedSettings(),
+    ]);
+
+    // Preparar ou atualizar cadastro da cliente antes da transação de trava de horário
+    // para manter a transação de reserva curta e rápida
+    const client = await prisma.client.upsert({
+      where: { phone: normalizedPhone },
+      create: {
+        name,
+        phone: normalizedPhone,
+        email: email || null,
+        notes: notes || null,
+        category: "ativas",
+      },
+      update: {
+        name,
+        ...(email ? { email } : {}),
+        ...(notes ? { notes } : {}),
+      },
+    });
+
     // Serialização + transação de banco (com pg_advisory_xact_lock no PostgreSQL) para impedir concorrência/duplicidade no mesmo horário
     const created = await withBookingLock(() =>
       prisma.$transaction(async (tx) => {
-        await acquirePostgresBookingLock(tx, date);
-
-        const service = await tx.service.findUnique({ where: { id: serviceId } });
-        if (!service || !service.active) {
+        let service =
+          allCachedServices.find((s) => s.id === serviceId) || null;
+        if (!service) {
+          const allActive = allCachedServices.filter((s) => s.active);
+          const slugWords = serviceId
+            .toLowerCase()
+            .replace(/[-_]/g, " ")
+            .split(/\s+/)
+            .filter((w) => w.length >= 3);
+          service =
+            allActive.find((s) => {
+              const sName = s.name
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "");
+              return slugWords.some((w) => sName.includes(w));
+            }) ||
+            allActive[0] ||
+            null;
+        }
+        if (!service || (!service.active && !isAdmin)) {
           throw new Error("SERVICE_NOT_FOUND");
         }
 
-        const settings = await tx.settings.findFirst();
-        const signalPct = settings?.signalPercentage ?? 50;
-        const holdMinutes = settings?.holdMinutes ?? 15;
+        const signalPct = cachedSettings?.signalPercentage ?? 50;
+        const holdMinutes = cachedSettings?.holdMinutes ?? 15;
         const signalAmount = Number(((service.price * signalPct) / 100).toFixed(2));
 
         // Bloquear qualquer tentativa de manipulação de preço, valor do sinal ou status pelo cliente
@@ -191,12 +244,15 @@ export async function POST(request: Request) {
           }
         }
 
+        await acquirePostgresBookingLock(tx, date);
+
         const available = await isTimeAvailable(
           date,
           time,
           service.duration,
           undefined,
-          tx
+          tx,
+          isAdmin ? { allowPastToday: true } : undefined
         );
         if (!available) {
           throw new Error("SLOT_UNAVAILABLE");
@@ -205,35 +261,6 @@ export async function POST(request: Request) {
         const expiresAt = service.requiresDeposit
           ? new Date(Date.now() + holdMinutes * 60 * 1000)
           : null;
-
-        let client = await tx.client.findUnique({
-          where: { phone: normalizedPhone },
-        });
-
-        if (!client) {
-          client = await tx.client.create({
-            data: {
-              name,
-              phone: normalizedPhone,
-              email: email || null,
-              notes: notes || null,
-              category: "ativas",
-            },
-          });
-        } else {
-          const apptCount = await tx.appointment.count({
-            where: { clientId: client.id },
-          });
-          client = await tx.client.update({
-            where: { id: client.id },
-            data: {
-              name,
-              email: email || client.email,
-              notes: notes || client.notes,
-              category: apptCount + 1 >= 3 ? "frequentes" : "ativas",
-            },
-          });
-        }
 
         const endTime = minutesToTime(timeToMinutes(time) + service.duration);
 
@@ -253,18 +280,16 @@ export async function POST(request: Request) {
             expiresAt,
             notes: notes || null,
           },
-          include: {
-            service: true,
-          },
         });
 
-        return { appt, holdMinutes };
+        return { appt, serviceName: service.name, holdMinutes };
       })
     );
 
     return NextResponse.json(
       {
         id: created.appt.id,
+        clientId: client.id,
         date: created.appt.date,
         startTime: created.appt.startTime,
         endTime: created.appt.endTime,
@@ -276,7 +301,7 @@ export async function POST(request: Request) {
             : "Sinal confirmado",
         signalAmount: created.appt.signalAmount,
         totalAmount: created.appt.totalAmount,
-        serviceName: created.appt.service.name,
+        serviceName: created.serviceName,
         expiresAt: created.appt.expiresAt,
         holdMinutes: created.holdMinutes,
       },
@@ -284,6 +309,10 @@ export async function POST(request: Request) {
     );
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "";
+    const prismaCode =
+      error && typeof error === "object" && "code" in error
+        ? String((error as { code?: unknown }).code)
+        : "";
     if (msg === "MANIPULATED_VALUES") {
       return NextResponse.json(
         {
@@ -299,7 +328,7 @@ export async function POST(request: Request) {
         { status: 404 }
       );
     }
-    if (msg === "SLOT_UNAVAILABLE") {
+    if (msg === "SLOT_UNAVAILABLE" || prismaCode === "P2002") {
       return NextResponse.json(
         {
           error:

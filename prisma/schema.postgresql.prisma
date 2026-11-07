@@ -58,6 +58,8 @@ model GalleryImage {
   createdAt DateTime @default(now())
   serviceId String?
   service   Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  @@index([serviceId])
 }
 
 model Appointment {
@@ -87,6 +89,9 @@ model Appointment {
 
   @@index([date, status])
   @@index([date, startTime])
+  @@index([clientId])
+  @@index([serviceId])
+  @@index([status, expiresAt])
 }
 
 model WorkingHours {

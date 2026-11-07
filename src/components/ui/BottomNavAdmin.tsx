@@ -12,9 +12,18 @@ import {
 } from "lucide-react";
 import { useBooking } from "@/context/BookingContext";
 
-export type AdminTab = "agenda" | "clientes" | "servicos" | "financeiro" | "mais";
+export type AdminTab =
+  | "agenda"
+  | "clientes"
+  | "servicos"
+  | "financeiro"
+  | "mais";
 
-export default function BottomNavAdmin({ activeTab }: { activeTab?: AdminTab }) {
+export default function BottomNavAdmin({
+  activeTab,
+}: {
+  activeTab?: AdminTab;
+}) {
   const pathname = usePathname();
   const { setIsMenuOpen } = useBooking();
 
@@ -26,7 +35,7 @@ export default function BottomNavAdmin({ activeTab }: { activeTab?: AdminTab }) 
       ? "servicos"
       : pathname.includes("/financeiro")
       ? "financeiro"
-      : pathname.includes("/mais")
+      : pathname.includes("/mais") || pathname.includes("/horarios")
       ? "mais"
       : "agenda");
 
@@ -58,7 +67,7 @@ export default function BottomNavAdmin({ activeTab }: { activeTab?: AdminTab }) 
   ];
 
   return (
-    <nav className="sticky bottom-0 left-0 right-0 w-full bg-[#38231E] text-[#C8B5AD] px-2 pt-2 pb-3 flex items-center justify-around z-30 border-t border-[#4B312B]">
+    <nav className="sticky bottom-0 left-0 right-0 w-full bg-[#38231E] text-[#C8B5AD] px-1 pt-1.5 pb-[max(0.65rem,env(safe-area-inset-bottom))] grid grid-cols-5 items-center z-30 border-t border-[#4B312B] select-none">
       {items.map((item) => {
         const isActive = resolvedTab === item.key;
         const IconComponent = item.icon;
@@ -66,10 +75,10 @@ export default function BottomNavAdmin({ activeTab }: { activeTab?: AdminTab }) 
           <Link
             key={item.key}
             href={item.href}
-            className="flex flex-col items-center justify-center min-w-[62px] py-0.5 relative group transition-colors"
+            className="flex flex-col items-center justify-center min-h-[48px] py-1 relative group transition-colors"
           >
             {isActive && (
-              <span className="absolute -top-2 w-7 h-[3px] rounded-b-full bg-[#E5B8B4]" />
+              <span className="absolute -top-1.5 w-7 h-[3px] rounded-b-full bg-[#E5B8B4]" />
             )}
             <IconComponent
               size={20}
@@ -77,7 +86,7 @@ export default function BottomNavAdmin({ activeTab }: { activeTab?: AdminTab }) 
               className={isActive ? "text-[#FAF3EE]" : "text-[#B69F96]"}
             />
             <span
-              className={`text-[11px] mt-1 leading-tight ${
+              className={`text-[10.5px] min-[360px]:text-[11px] mt-1 leading-tight truncate max-w-full px-0.5 ${
                 isActive
                   ? "text-[#FAF3EE] font-semibold"
                   : "text-[#B69F96] font-normal"
@@ -89,20 +98,32 @@ export default function BottomNavAdmin({ activeTab }: { activeTab?: AdminTab }) 
         );
       })}
 
-      <button
-        type="button"
-        onClick={() => setIsMenuOpen(true)}
-        className="flex flex-col items-center justify-center min-w-[62px] py-0.5 relative transition-colors"
+      <Link
+        href="/admin/mais"
+        onClick={() => setIsMenuOpen(false)}
+        className="flex flex-col items-center justify-center min-h-[48px] py-1 relative transition-colors"
+        aria-label="Configurações e mais opções"
       >
+        {resolvedTab === "mais" && (
+          <span className="absolute -top-1.5 w-7 h-[3px] rounded-b-full bg-[#E5B8B4]" />
+        )}
         <MoreHorizontal
           size={20}
-          strokeWidth={1.8}
-          className="text-[#B69F96]"
+          strokeWidth={resolvedTab === "mais" ? 2.2 : 1.8}
+          className={
+            resolvedTab === "mais" ? "text-[#FAF3EE]" : "text-[#B69F96]"
+          }
         />
-        <span className="text-[11px] mt-1 leading-tight text-[#B69F96] font-normal">
+        <span
+          className={`text-[10.5px] min-[360px]:text-[11px] mt-1 leading-tight ${
+            resolvedTab === "mais"
+              ? "text-[#FAF3EE] font-semibold"
+              : "text-[#B69F96] font-normal"
+          }`}
+        >
           Mais
         </span>
-      </button>
+      </Link>
     </nav>
   );
 }

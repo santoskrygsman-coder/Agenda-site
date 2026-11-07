@@ -64,7 +64,7 @@ function LoginFormContent() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-3.5">
-            <div className="w-full bg-[#FAF5F1] border border-[#E6D8CF] rounded-[14px] px-3.5 py-3 flex items-center gap-3 focus-within:border-[#B87472]">
+            <div className="w-full bg-[#FAF5F1] border border-[#E6D8CF] rounded-[14px] px-3.5 py-3 min-h-[48px] flex items-center gap-3 focus-within:border-[#B87472]">
               <User size={18} className="text-[#4B3630] shrink-0" />
               <input
                 type="text"
@@ -73,11 +73,13 @@ function LoginFormContent() {
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Usuário ou e-mail"
                 autoComplete="username"
-                className="flex-1 bg-transparent text-[13.5px] text-[#2D1C18] placeholder-[#7D6A63] focus:outline-none"
+                autoCapitalize="none"
+                enterKeyHint="next"
+                className="flex-1 bg-transparent text-[14px] text-[#2D1C18] placeholder-[#7D6A63] focus:outline-none min-w-0"
               />
             </div>
 
-            <div className="w-full bg-[#FAF5F1] border border-[#E6D8CF] rounded-[14px] px-3.5 py-3 flex items-center gap-3 focus-within:border-[#B87472]">
+            <div className="w-full bg-[#FAF5F1] border border-[#E6D8CF] rounded-[14px] px-3.5 py-3 min-h-[48px] flex items-center gap-3 focus-within:border-[#B87472]">
               <Lock size={18} className="text-[#4B3630] shrink-0" />
               <input
                 type="password"
@@ -86,12 +88,13 @@ function LoginFormContent() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Sua senha"
                 autoComplete="current-password"
-                className="flex-1 bg-transparent text-[13.5px] text-[#2D1C18] placeholder-[#7D6A63] focus:outline-none"
+                enterKeyHint="done"
+                className="flex-1 bg-transparent text-[14px] text-[#2D1C18] placeholder-[#7D6A63] focus:outline-none min-w-0"
               />
             </div>
 
             <div className="pt-2">
-              <PrimaryButton type="submit" variant="rose" showArrow>
+              <PrimaryButton type="submit" variant="rose" showArrow disabled={loading}>
                 {loading ? "Entrando..." : "Entrar no painel"}
               </PrimaryButton>
             </div>

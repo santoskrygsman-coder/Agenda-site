@@ -69,7 +69,10 @@ export default function BookingSummaryPage() {
 
   useEffect(() => {
     const updateTimer = () => {
-      const diff = Math.max(0, Math.floor((targetTimestamp - Date.now()) / 1000));
+      const diff = Math.max(
+        0,
+        Math.floor((targetTimestamp - Date.now()) / 1000)
+      );
       setRemainingSeconds(diff);
     };
     updateTimer();
@@ -161,16 +164,16 @@ export default function BookingSummaryPage() {
         rightType="botanical"
       />
 
-      <div className="px-5 pt-1 pb-6 flex-1 flex flex-col justify-between relative">
-        <div className="space-y-3.5">
+      <div className="px-4 min-[375px]:px-5 pt-1 pb-[max(1.5rem,env(safe-area-inset-bottom))] flex-1 flex flex-col justify-between relative">
+        <div className="space-y-3">
           {/* Status oficial do pagamento: permanece "Aguardando confirmação" */}
-          <div className="flex items-center justify-between bg-[#F7E3BE] border border-[#E6CC9C] text-[#9A681C] rounded-[14px] px-3.5 py-2 text-[12px] font-bold">
+          <div className="flex flex-wrap items-center justify-between gap-1.5 bg-[#F7E3BE] border border-[#E6CC9C] text-[#9A681C] rounded-[14px] px-3 py-2 text-[11.5px] min-[375px]:text-[12px] font-bold">
             <span className="flex items-center gap-1.5">
-              <Hourglass size={13.5} />
+              <Hourglass size={13.5} className="shrink-0" />
               <span>Status: Aguardando confirmação</span>
             </span>
             {remainingSeconds > 0 && (
-              <span className="bg-[#FFFDFB]/80 px-2 py-0.5 rounded-full text-[11px] text-[#6E493A]">
+              <span className="bg-[#FFFDFB]/85 px-2 py-0.5 rounded-full text-[11px] text-[#6E493A]">
                 Reserva: {countdownMinutes}:{countdownSecs}
               </span>
             )}
@@ -181,20 +184,20 @@ export default function BookingSummaryPage() {
 
           {/* Date, Time & Client Rows */}
           <div className="bg-[#FAF5F1]/90 border border-[#E7DAD1] rounded-[16px] px-3.5 py-2.5 space-y-1.5">
-            <div className="flex items-center justify-between text-[13px] text-[#2D1C18]">
-              <span className="flex items-center gap-2 font-medium">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[13px] text-[#2D1C18]">
+              <span className="flex items-center gap-1.5 font-medium">
                 <Calendar size={15} className="text-[#B87472] shrink-0" />
-                {formatDateLongPtBr(selectedDate)}
+                <span>{formatDateLongPtBr(selectedDate)}</span>
               </span>
               <span className="flex items-center gap-1.5 font-bold text-[#2D1C18]">
                 <Clock size={14} className="text-[#B87472] shrink-0" />
-                {selectedTime}
+                <span>{selectedTime}</span>
               </span>
             </div>
 
-            <div className="flex items-center gap-2 text-[12.5px] text-[#4E3B35] pt-1 border-t border-[#ECE0D7]">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] text-[#4E3B35] pt-1 border-t border-[#ECE0D7]">
               <User size={14} className="text-[#B87472] shrink-0" />
-              <span className="font-semibold text-[#2D1C18] truncate">
+              <span className="font-semibold text-[#2D1C18] truncate max-w-[170px] min-[375px]:max-w-[210px]">
                 {clientData.name.trim() || "Seu nome"}
               </span>
               <span>•</span>
@@ -210,7 +213,7 @@ export default function BookingSummaryPage() {
             </div>
             <div className="flex items-center justify-between text-[12.5px] text-[#5C4740]">
               <span className="flex items-center gap-1">
-                <Info size={12.5} className="text-[#8C756C]" />
+                <Info size={12.5} className="text-[#8C756C] shrink-0" />
                 <span>Saldo no dia do atendimento</span>
               </span>
               <span className="font-semibold text-[#2D1C18]">
@@ -234,8 +237,8 @@ export default function BookingSummaryPage() {
 
             {/* Chave Pix Card */}
             <div className="bg-[#FAF5F1] border border-[#E6D8CF] rounded-[16px] p-3.5 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 pr-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
                   <p className="text-[11.5px] text-[#6E5850]">
                     Chave Pix ({displayPixType})
                   </p>
@@ -246,36 +249,36 @@ export default function BookingSummaryPage() {
                 <button
                   type="button"
                   onClick={handleCopyPixKey}
-                  className="bg-[#FFFDFB] hover:bg-[#F5ECE6] active:scale-95 transition border border-[#E2D4CB] text-[#2D1C18] font-bold text-[12.5px] px-3.5 py-1.5 rounded-[10px] flex items-center gap-1.5 shrink-0 shadow-2xs"
+                  className="min-h-[44px] bg-[#FFFDFB] hover:bg-[#F5ECE6] active:scale-95 transition border border-[#E2D4CB] text-[#2D1C18] font-bold text-[12.5px] px-3.5 py-2 rounded-[11px] flex items-center gap-1.5 shrink-0 shadow-2xs touch-manipulation"
                 >
                   {copiedKey ? (
                     <>
-                      <Check size={13} className="text-[#2E8540]" />
+                      <Check size={14} className="text-[#2E8540]" />
                       <span>Copiado</span>
                     </>
                   ) : (
                     <>
-                      <Copy size={12.5} className="text-[#6E5850]" />
+                      <Copy size={13} className="text-[#6E5850]" />
                       <span>Copiar</span>
                     </>
                   )}
                 </button>
               </div>
 
-              <div className="flex items-center gap-2 pt-1 border-t border-[#EFE4DC]">
+              <div className="flex items-center gap-2 pt-1.5 border-t border-[#EFE4DC]">
                 <button
                   type="button"
                   onClick={handleCopyPixEmv}
-                  className="flex-1 bg-[#F4E3DC] hover:bg-[#ECD5CC] text-[#2D1C18] font-semibold text-[12px] py-2 px-3 rounded-[10px] flex items-center justify-center gap-1.5 transition"
+                  className="min-h-[44px] flex-1 bg-[#F4E3DC] hover:bg-[#ECD5CC] active:scale-[0.99] text-[#2D1C18] font-semibold text-[12px] py-2 px-3 rounded-[11px] flex items-center justify-center gap-1.5 transition touch-manipulation"
                 >
                   {copiedEmv ? (
                     <>
-                      <Check size={13} className="text-[#2E8540]" />
+                      <Check size={14} className="text-[#2E8540] shrink-0" />
                       <span>PIX Copia e Cola copiado!</span>
                     </>
                   ) : (
                     <>
-                      <Sparkles size={13} className="text-[#B87472]" />
+                      <Sparkles size={13.5} className="text-[#B87472] shrink-0" />
                       <span>Copiar PIX Copia e Cola</span>
                     </>
                   )}
@@ -284,9 +287,9 @@ export default function BookingSummaryPage() {
                 <button
                   type="button"
                   onClick={() => setQrModalOpen(true)}
-                  className="bg-[#FFFDFB] hover:bg-[#F5ECE6] border border-[#E2D4CB] text-[#2D1C18] font-semibold text-[12px] py-2 px-3 rounded-[10px] flex items-center justify-center gap-1.5 transition shrink-0"
+                  className="min-h-[44px] bg-[#FFFDFB] hover:bg-[#F5ECE6] active:scale-95 border border-[#E2D4CB] text-[#2D1C18] font-semibold text-[12px] py-2 px-3 rounded-[11px] flex items-center justify-center gap-1.5 transition shrink-0 touch-manipulation"
                 >
-                  <QrCode size={13.5} className="text-[#B87472]" />
+                  <QrCode size={14} className="text-[#B87472]" />
                   <span>QR Code</span>
                 </button>
               </div>
@@ -296,9 +299,9 @@ export default function BookingSummaryPage() {
             <button
               type="button"
               onClick={handleSendReceiptWhatsApp}
-              className="w-full bg-[#B87472] hover:bg-[#A66361] active:scale-[0.99] transition text-[#FFFDFB] rounded-full py-3.5 px-4 flex items-center justify-center gap-2.5 text-[14px] font-bold shadow-[0_6px_18px_rgba(184,116,114,0.28)]"
+              className="w-full min-h-[52px] bg-[#B87472] hover:bg-[#A66361] active:scale-[0.99] transition text-[#FFFDFB] rounded-full py-3.5 px-4 flex items-center justify-center gap-2.5 text-[14.5px] font-bold shadow-[0_6px_18px_rgba(184,116,114,0.28)] touch-manipulation"
             >
-              <WhatsAppCircleIcon size={20} variant="light" />
+              <WhatsAppCircleIcon size={21} variant="light" />
               <span>Enviar comprovante pelo WhatsApp</span>
             </button>
 
@@ -326,8 +329,8 @@ export default function BookingSummaryPage() {
                 />
                 <p>
                   {whatsappOpened
-                    ? "WhatsApp aberto! Seu pagamento permanece como \"Aguardando confirmação\" até que a profissional confira o comprovante e altere para \"Sinal confirmado\"."
-                    : "O pagamento permanece como \"Aguardando confirmação\" e só será alterado para \"Sinal confirmado\" manualmente pela profissional após receber seu comprovante no WhatsApp."}
+                    ? 'WhatsApp aberto! Seu pagamento permanece como "Aguardando confirmação" até que a profissional confira o comprovante e altere para "Sinal confirmado".'
+                    : 'O pagamento permanece como "Aguardando confirmação" e só será alterado para "Sinal confirmado" manualmente pela profissional após receber seu comprovante no WhatsApp.'}
                 </p>
               </div>
             </div>
@@ -340,18 +343,18 @@ export default function BookingSummaryPage() {
             Após o pagamento, envie o comprovante pelo WhatsApp para que
             possamos confirmar seu horário.
           </p>
-          <BotanicalSprigRight className="w-[75px] h-[50px] absolute -right-4 -bottom-4 opacity-70" />
+          <BotanicalSprigRight className="w-[75px] h-[50px] absolute -right-4 -bottom-4 opacity-70 pointer-events-none" />
         </div>
       </div>
 
       {/* Modal de QR Code PIX */}
       {qrModalOpen && (
         <div
-          className="fixed inset-0 z-50 bg-[#2D1C18]/65 backdrop-blur-[2px] flex items-center justify-center p-5"
+          className="fixed inset-0 z-50 bg-[#2D1C18]/65 backdrop-blur-[2px] flex items-center justify-center p-4"
           onClick={() => setQrModalOpen(false)}
         >
           <div
-            className="w-full max-w-[340px] bg-[#FAF5F1] border border-[#E5D4C9] rounded-[24px] p-5 text-center space-y-3 shadow-2xl"
+            className="w-full max-w-[350px] max-h-[90dvh] overflow-y-auto bg-[#FAF5F1] border border-[#E5D4C9] rounded-[24px] p-5 text-center space-y-3 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -361,9 +364,10 @@ export default function BookingSummaryPage() {
               <button
                 type="button"
                 onClick={() => setQrModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-[#EADCD3] flex items-center justify-center text-[#2D1C18]"
+                className="w-11 h-11 rounded-full bg-[#EADCD3] flex items-center justify-center text-[#2D1C18] active:scale-95 transition"
+                aria-label="Fechar QR Code"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
@@ -398,9 +402,9 @@ export default function BookingSummaryPage() {
             <button
               type="button"
               onClick={handleCopyPixEmv}
-              className="w-full bg-[#B87472] hover:bg-[#A66361] text-white font-semibold text-[13.5px] py-2.5 rounded-full flex items-center justify-center gap-2"
+              className="w-full min-h-[48px] bg-[#B87472] hover:bg-[#A66361] active:scale-[0.99] text-white font-semibold text-[14px] py-3 rounded-full flex items-center justify-center gap-2 transition"
             >
-              {copiedEmv ? <Check size={15} /> : <Copy size={14} />}
+              {copiedEmv ? <Check size={16} /> : <Copy size={15} />}
               <span>
                 {copiedEmv ? "Código PIX copiado!" : "Copiar código PIX"}
               </span>

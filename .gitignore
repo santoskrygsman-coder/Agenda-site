@@ -31,12 +31,15 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files
+.env
 .env*
+!.env.example
 !.env.production.example
 
 # vercel & netlify
 .vercel
 .netlify
+.netlify/
 /.netlify/
 
 # typescript
@@ -44,6 +47,11 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+backups/
 /backups/
+*.db
+*.db-journal
+*.sqlite
 prisma/*.db
 prisma/*.db-journal
+prisma/*.sqlite

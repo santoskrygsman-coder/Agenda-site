@@ -153,3 +153,271 @@ export function validateBookingPayload(input: BookingValidationInput): {
     firstError: keys.length > 0 ? fieldErrors[keys[0]] : undefined,
   };
 }
+
+export const WEEKDAY_NAMES_PT = [
+  "Domingo",
+  "Segunda-feira",
+  "Terça-feira",
+  "Quarta-feira",
+  "Quinta-feira",
+  "Sexta-feira",
+  "Sábado",
+] as const;
+
+export interface WorkingHourPeriod {
+  startTime: string;
+  endTime: string;
+}
+
+export interface WorkingHourInputItem {
+  id?: string;
+  weekday: number;
+  startTime?: string;
+  endTime?: string;
+  breakStart?: string | null;
+  breakEnd?: string | null;
+  active?: boolean;
+  periods?: WorkingHourPeriod[];
+}
+
+export interface NormalizedWorkingHourItem {
+  weekday: number;
+  startTime: string;
+  endTime: string;
+  breakStart: string | null;
+  breakEnd: string | null;
+  active: boolean;
+  periods: WorkingHourPeriod[];
+}
+
+export function isValidTimeFormat(value: unknown): value is string {
+  return typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value.trim());
+}
+
+export function parseTimeToMinutes(hhmm: string): number {
+  const [h, m] = hhmm.trim().split(":").map(Number);
+  return h * 60 + m;
+}
+
+export function derivePeriodsFromWorkingHour(item: {
+  startTime: string;
+  endTime: string;
+  breakStart?: string | null;
+  breakEnd?: string | null;
+}): WorkingHourPeriod[] {
+  if (
+    item.breakStart &&
+    item.breakEnd &&
+    isValidTimeFormat(item.breakStart) &&
+    isValidTimeFormat(item.breakEnd) &&
+    isValidTimeFormat(item.startTime) &&
+    isValidTimeFormat(item.endTime) &&
+    parseTimeToMinutes(item.startTime) < parseTimeToMinutes(item.breakStart) &&
+    parseTimeToMinutes(item.breakStart) < parseTimeToMinutes(item.breakEnd) &&
+    parseTimeToMinutes(item.breakEnd) < parseTimeToMinutes(item.endTime)
+  ) {
+    return [
+      { startTime: item.startTime, endTime: item.breakStart },
+      { startTime: item.breakEnd, endTime: item.endTime },
+    ];
+  }
+  return [{ startTime: item.startTime, endTime: item.endTime }];
+}
+
+export function normalizeAndValidateWorkingHourItem(
+  raw: WorkingHourInputItem
+): {
+  valid: boolean;
+  error?: string;
+  data?: NormalizedWorkingHourItem;
+} {
+  const weekday = Number(raw?.weekday);
+  if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) {
+    return {
+      valid: false,
+      error: "Dia da semana inválido (deve ser entre 0 - Domingo e 6 - Sábado).",
+    };
+  }
+
+  const dayLabel = WEEKDAY_NAMES_PT[weekday];
+  const active = Boolean(raw?.active);
+
+  let startTime = typeof raw?.startTime === "string" ? raw.startTime.trim() : "";
+  let endTime = typeof raw?.endTime === "string" ? raw.endTime.trim() : "";
+  let breakStart =
+    typeof raw?.breakStart === "string" && raw.breakStart.trim() !== ""
+      ? raw.breakStart.trim()
+      : null;
+  let breakEnd =
+    typeof raw?.breakEnd === "string" && raw.breakEnd.trim() !== ""
+      ? raw.breakEnd.trim()
+      : null;
+
+  // Se foi enviado o array `periods` (1 ou 2 períodos no mesmo dia), converte e valida
+  if (Array.isArray(raw?.periods) && raw.periods.length > 0) {
+    if (raw.periods.length > 2) {
+      return {
+        valid: false,
+        error: `${dayLabel}: são permitidos no máximo 2 períodos de atendimento no mesmo dia.`,
+      };
+    }
+
+    const p1 = raw.periods[0];
+    const p1Start = typeof p1?.startTime === "string" ? p1.startTime.trim() : "";
+    const p1End = typeof p1?.endTime === "string" ? p1.endTime.trim() : "";
+
+    if (!isValidTimeFormat(p1Start) || !isValidTimeFormat(p1End)) {
+      return {
+        valid: false,
+        error: `${dayLabel}: informe horários válidos (HH:MM) no 1º período.`,
+      };
+    }
+    if (parseTimeToMinutes(p1End) <= parseTimeToMinutes(p1Start)) {
+      return {
+        valid: false,
+        error: `${dayLabel}: no 1º período, o horário de término (${p1End}) deve ser posterior ao início (${p1Start}).`,
+      };
+    }
+
+    if (raw.periods.length === 2) {
+      const p2 = raw.periods[1];
+      const p2Start = typeof p2?.startTime === "string" ? p2.startTime.trim() : "";
+      const p2End = typeof p2?.endTime === "string" ? p2.endTime.trim() : "";
+
+      if (!isValidTimeFormat(p2Start) || !isValidTimeFormat(p2End)) {
+        return {
+          valid: false,
+          error: `${dayLabel}: informe horários válidos (HH:MM) no 2º período.`,
+        };
+      }
+      if (parseTimeToMinutes(p2End) <= parseTimeToMinutes(p2Start)) {
+        return {
+          valid: false,
+          error: `${dayLabel}: no 2º período, o horário de término (${p2End}) deve ser posterior ao início (${p2Start}).`,
+        };
+      }
+      if (parseTimeToMinutes(p2Start) < parseTimeToMinutes(p1End)) {
+        return {
+          valid: false,
+          error: `${dayLabel}: o 2º período (${p2Start}) não pode começar antes do término do 1º período (${p1End}).`,
+        };
+      }
+
+      startTime = p1Start;
+      endTime = p2End;
+      if (parseTimeToMinutes(p2Start) === parseTimeToMinutes(p1End)) {
+        breakStart = null;
+        breakEnd = null;
+      } else {
+        breakStart = p1End;
+        breakEnd = p2Start;
+      }
+    } else {
+      startTime = p1Start;
+      endTime = p1End;
+    }
+  }
+
+  // Quando o dia está marcado como folga (sem atendimento), preserva os horários se válidos
+  if (!active) {
+    const safeStart = isValidTimeFormat(startTime) ? startTime : "09:00";
+    const safeEnd =
+      isValidTimeFormat(endTime) &&
+      parseTimeToMinutes(endTime) > parseTimeToMinutes(safeStart)
+        ? endTime
+        : "18:00";
+    const hasValidBreak =
+      breakStart &&
+      breakEnd &&
+      isValidTimeFormat(breakStart) &&
+      isValidTimeFormat(breakEnd) &&
+      parseTimeToMinutes(breakStart) > parseTimeToMinutes(safeStart) &&
+      parseTimeToMinutes(breakEnd) > parseTimeToMinutes(breakStart) &&
+      parseTimeToMinutes(breakEnd) < parseTimeToMinutes(safeEnd);
+
+    const normalizedInactive: NormalizedWorkingHourItem = {
+      weekday,
+      startTime: safeStart,
+      endTime: safeEnd,
+      breakStart: hasValidBreak ? breakStart : null,
+      breakEnd: hasValidBreak ? breakEnd : null,
+      active: false,
+      periods: derivePeriodsFromWorkingHour({
+        startTime: safeStart,
+        endTime: safeEnd,
+        breakStart: hasValidBreak ? breakStart : null,
+        breakEnd: hasValidBreak ? breakEnd : null,
+      }),
+    };
+
+    return { valid: true, data: normalizedInactive };
+  }
+
+  // Validação obrigatória quando o dia está ativo
+  if (!isValidTimeFormat(startTime) || !isValidTimeFormat(endTime)) {
+    return {
+      valid: false,
+      error: `${dayLabel}: preencha horários de início e término válidos no formato HH:MM.`,
+    };
+  }
+
+  const startMins = parseTimeToMinutes(startTime);
+  const endMins = parseTimeToMinutes(endTime);
+
+  if (endMins <= startMins) {
+    return {
+      valid: false,
+      error: `${dayLabel}: o horário de término (${endTime}) deve ser posterior ao horário de início (${startTime}).`,
+    };
+  }
+
+  if ((breakStart && !breakEnd) || (!breakStart && breakEnd)) {
+    return {
+      valid: false,
+      error: `${dayLabel}: preencha tanto o início quanto o término do intervalo (ou 2º período), ou deixe ambos em branco.`,
+    };
+  }
+
+  if (breakStart && breakEnd) {
+    if (!isValidTimeFormat(breakStart) || !isValidTimeFormat(breakEnd)) {
+      return {
+        valid: false,
+        error: `${dayLabel}: informe horários de intervalo válidos no formato HH:MM.`,
+      };
+    }
+
+    const bStartMins = parseTimeToMinutes(breakStart);
+    const bEndMins = parseTimeToMinutes(breakEnd);
+
+    if (bEndMins <= bStartMins) {
+      return {
+        valid: false,
+        error: `${dayLabel}: o fim do intervalo (${breakEnd}) deve ser posterior ao início do intervalo (${breakStart}).`,
+      };
+    }
+
+    if (bStartMins <= startMins || bEndMins >= endMins) {
+      return {
+        valid: false,
+        error: `${dayLabel}: o intervalo (${breakStart} às ${breakEnd}) deve estar dentro do horário de expediente (${startTime} às ${endTime}).`,
+      };
+    }
+  }
+
+  const normalized: NormalizedWorkingHourItem = {
+    weekday,
+    startTime,
+    endTime,
+    breakStart,
+    breakEnd,
+    active: true,
+    periods: derivePeriodsFromWorkingHour({
+      startTime,
+      endTime,
+      breakStart,
+      breakEnd,
+    }),
+  };
+
+  return { valid: true, data: normalized };
+}

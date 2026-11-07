@@ -18,6 +18,50 @@ function hashPassword(password) {
 }
 
 async function main() {
+  const isDryRun =
+    process.argv.includes("--dry-run") ||
+    process.argv.includes("--validate");
+
+  const backupPath = path.join(
+    process.cwd(),
+    "backups",
+    "sqlite-data-export.json"
+  );
+  const raw = await fs.readFile(backupPath, "utf-8");
+  const backup = JSON.parse(raw);
+  const { data } = backup;
+
+  // Validação de integridade relacional do backup SQLite antes de qualquer gravação
+  const clientIds = new Set((data.clients || []).map((c) => c.id));
+  const serviceIds = new Set((data.services || []).map((s) => s.id));
+  for (const a of data.appointments || []) {
+    if (!clientIds.has(a.clientId)) {
+      throw new Error(
+        `Integridade violada: Appointment ${a.id} referencia clientId inexistente (${a.clientId}).`
+      );
+    }
+    if (!serviceIds.has(a.serviceId)) {
+      throw new Error(
+        `Integridade violada: Appointment ${a.id} referencia serviceId inexistente (${a.serviceId}).`
+      );
+    }
+  }
+  for (const img of data.galleryImages || []) {
+    if (img.serviceId && !serviceIds.has(img.serviceId)) {
+      throw new Error(
+        `Integridade violada: GalleryImage ${img.id} referencia serviceId inexistente (${img.serviceId}).`
+      );
+    }
+  }
+
+  if (isDryRun) {
+    console.log(
+      "✅ [DRY-RUN / VALIDAÇÃO] Backup SQLite validado com 100% de integridade relacional!"
+    );
+    console.log("📊 Contagens prontas para migração:", backup.counts);
+    return;
+  }
+
   const dbUrl = process.env.DATABASE_URL || "";
   if (!dbUrl.startsWith("postgresql://") && !dbUrl.startsWith("postgres://")) {
     console.error(
@@ -28,15 +72,6 @@ async function main() {
     );
     process.exit(1);
   }
-
-  const backupPath = path.join(
-    process.cwd(),
-    "backups",
-    "sqlite-data-export.json"
-  );
-  const raw = await fs.readFile(backupPath, "utf-8");
-  const backup = JSON.parse(raw);
-  const { data } = backup;
 
   // Regra de Segurança #4: Proibir a senha padrão admin123 em produção
   const prodPassword = (process.env.ADMIN_PRODUCTION_PASSWORD || "").trim();
@@ -238,6 +273,8 @@ async function main() {
           signalAmount: a.signalAmount,
           totalAmount: a.totalAmount,
           expiresAt: a.expiresAt ? new Date(a.expiresAt) : null,
+          receiptUrl: a.receiptUrl ?? null,
+          receiptFileName: a.receiptFileName ?? null,
           receiptReportedAt: a.receiptReportedAt
             ? new Date(a.receiptReportedAt)
             : null,
@@ -258,6 +295,8 @@ async function main() {
           signalAmount: a.signalAmount,
           totalAmount: a.totalAmount,
           expiresAt: a.expiresAt ? new Date(a.expiresAt) : null,
+          receiptUrl: a.receiptUrl ?? null,
+          receiptFileName: a.receiptFileName ?? null,
           receiptReportedAt: a.receiptReportedAt
             ? new Date(a.receiptReportedAt)
             : null,
