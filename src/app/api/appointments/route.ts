@@ -39,6 +39,9 @@ function mapStatusToUi(
   if (paymentStatus === "SIGNAL_PAID") {
     return { uiStatus: "confirmado", statusLabel: "Sinal confirmado" };
   }
+  if (paymentStatus === "PAY_ON_SITE") {
+    return { uiStatus: "confirmado", statusLabel: "Confirmado (sem sinal)" };
+  }
   if (status === "CONFIRMED") {
     return { uiStatus: "confirmado", statusLabel: "Confirmado" };
   }
@@ -223,9 +226,12 @@ export async function POST(request: Request) {
           throw new Error("SERVICE_NOT_FOUND");
         }
 
+        const requiresSignal = service.requiresDeposit !== false;
         const signalPct = cachedSettings?.signalPercentage ?? 50;
         const holdMinutes = cachedSettings?.holdMinutes ?? 15;
-        const signalAmount = Number(((service.price * signalPct) / 100).toFixed(2));
+        const signalAmount = requiresSignal
+          ? Number(((service.price * signalPct) / 100).toFixed(2))
+          : 0;
 
         // Bloquear qualquer tentativa de manipulação de preço, valor do sinal ou status pelo cliente
         if (!isAdmin) {
@@ -258,7 +264,7 @@ export async function POST(request: Request) {
           throw new Error("SLOT_UNAVAILABLE");
         }
 
-        const expiresAt = service.requiresDeposit
+        const expiresAt = requiresSignal
           ? new Date(Date.now() + holdMinutes * 60 * 1000)
           : null;
 
@@ -271,10 +277,8 @@ export async function POST(request: Request) {
             date,
             startTime: time,
             endTime,
-            status: "PENDING",
-            paymentStatus: service.requiresDeposit
-              ? "PENDING_SIGNAL"
-              : "FULL_PAID",
+            status: requiresSignal ? "PENDING" : "CONFIRMED",
+            paymentStatus: requiresSignal ? "PENDING_SIGNAL" : "PAY_ON_SITE",
             signalAmount,
             totalAmount: service.price,
             expiresAt,

@@ -51,6 +51,7 @@ export default function AdminServicesPage() {
   const [price, setPrice] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("90");
   const [image, setImage] = useState("/images/service-classica.png");
+  const [requiresDeposit, setRequiresDeposit] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState("");
@@ -72,6 +73,7 @@ export default function AdminServicesPage() {
     setPrice("");
     setDurationMinutes("90");
     setImage("/images/service-classica.png");
+    setRequiresDeposit(true);
     setUploadSuccess("");
     setErrorMsg("");
     setModalOpen(true);
@@ -84,6 +86,7 @@ export default function AdminServicesPage() {
     setPrice(String(svc.price));
     setDurationMinutes(String(svc.durationMinutes || 90));
     setImage(svc.image || "/images/service-classica.png");
+    setRequiresDeposit(svc.requiresDeposit !== false);
     setUploadSuccess("");
     setErrorMsg("");
     setModalOpen(true);
@@ -185,6 +188,7 @@ export default function AdminServicesPage() {
       durationMinutes: parsedDuration,
       image,
       active: editingService ? editingService.active : true,
+      requiresDeposit,
     });
     setSaving(false);
 
@@ -354,6 +358,44 @@ export default function AdminServicesPage() {
                     <option value="180">3h</option>
                   </select>
                 </div>
+              </div>
+
+              {/* Opção de Sinal Obrigatório por Serviço */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setRequiresDeposit((prev) => !prev)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setRequiresDeposit((prev) => !prev);
+                  }
+                }}
+                className="w-full min-h-[56px] bg-[#FAF5F1] border border-[#E4D5CB] rounded-[14px] px-3.5 py-2.5 flex items-center justify-between gap-3 cursor-pointer touch-manipulation select-none"
+              >
+                <div className="min-w-0">
+                  <p className="text-[13px] font-bold text-[#2D1C18]">
+                    Exigir sinal obrigatório via Pix
+                  </p>
+                  <p className="text-[11.5px] text-[#6E5850] leading-snug mt-0.5">
+                    {requiresDeposit
+                      ? "Ativado: cliente paga o sinal via Pix para confirmar o horário."
+                      : "Desativado: cliente agenda sem pagar sinal antecipado."}
+                  </p>
+                </div>
+                <span
+                  role="switch"
+                  aria-checked={requiresDeposit}
+                  className={`w-[46px] h-[26px] rounded-full p-0.5 transition-colors duration-200 flex items-center shrink-0 ${
+                    requiresDeposit ? "bg-[#B87472]" : "bg-[#D5C5BC]"
+                  }`}
+                >
+                  <span
+                    className={`w-[22px] h-[22px] rounded-full bg-[#FFFDFB] shadow-sm transform transition-transform duration-200 ${
+                      requiresDeposit ? "translate-x-[20px]" : "translate-x-0"
+                    }`}
+                  />
+                </span>
               </div>
 
               {/* SEÇÃO DE FOTOGRAFIA REAL EM ALTA DEFINIÇÃO (HD) */}

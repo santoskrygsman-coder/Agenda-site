@@ -92,7 +92,7 @@ export async function GET(request: Request) {
           type: "income",
           paymentStatus: "SIGNAL_PAID",
         });
-      } else {
+      } else if (appt.paymentStatus === "PENDING_SIGNAL" && appt.signalAmount > 0) {
         // PENDING_SIGNAL
         pendingSignalsTotal += signalVal;
         entries.push({

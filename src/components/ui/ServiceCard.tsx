@@ -111,9 +111,22 @@ export function ServiceCardComponent({
             <h3 className="text-[14.5px] font-bold text-[#2D1C18] leading-tight truncate group-hover:text-[#B87472] transition-colors">
               {service.name}
             </h3>
-            <p className="text-[12.5px] text-[#6E5B53] mt-1 font-medium">
-              {service.duration} • {service.priceFormatted}
-            </p>
+            <div className="flex items-center flex-wrap gap-1.5 mt-1">
+              <p className="text-[12.5px] text-[#6E5B53] font-medium">
+                {service.duration} • {service.priceFormatted}
+              </p>
+              <span
+                className={`text-[10.5px] font-semibold px-2 py-0.5 rounded-full ${
+                  service.requiresDeposit === false
+                    ? "bg-[#E4EFE6] text-[#2E8540]"
+                    : "bg-[#F4E3DC] text-[#8E4F4D]"
+                }`}
+              >
+                {service.requiresDeposit === false
+                  ? "Sem sinal"
+                  : "Sinal obrigatório"}
+              </span>
+            </div>
           </div>
         </button>
         <button

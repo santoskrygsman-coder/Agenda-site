@@ -236,9 +236,9 @@ export default function ClientDataFormPage() {
                   <strong className="text-[#2D1C18]">
                     políticas de agendamento
                   </strong>
-                  : confirmação do horário mediante pagamento do sinal (
-                  {signalPct}%) via Pix e envio manual do comprovante pelo
-                  WhatsApp. *
+                  {selectedService?.requiresDeposit === false
+                    ? ": compromisso de comparecer no horário reservado ou avisar com antecedência em caso de imprevisto (pagamento realizado no atendimento). *"
+                    : `: confirmação do horário mediante pagamento do sinal (${signalPct}%) via Pix e envio manual do comprovante pelo WhatsApp. *`}
                 </span>
               </label>
 

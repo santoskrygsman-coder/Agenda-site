@@ -41,6 +41,7 @@ interface BookingContextType {
     durationMinutes: number;
     image: string;
     active: boolean;
+    requiresDeposit?: boolean;
   }) => Promise<{ ok: boolean; error?: string }>;
   deleteService: (id: string) => Promise<{ ok: boolean; error?: string }>;
   selectedService: ServiceItem;
@@ -408,6 +409,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
     durationMinutes: number;
     image: string;
     active: boolean;
+    requiresDeposit?: boolean;
   }) => {
     try {
       const url = payload.id ? `/api/services/${payload.id}` : "/api/services";
