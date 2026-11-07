@@ -1,106 +1,52 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { parse, addMinutes, isBefore, format, startOfDay } from "date-fns";
+import { getAvailableSlotsForDate } from "@/lib/scheduling";
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const dateStr = searchParams.get("date");
-  const durationStr = searchParams.get("duration");
+  try {
+    const { searchParams } = new URL(request.url);
+    const dateStr = searchParams.get("date");
+    const serviceId = searchParams.get("serviceId");
+    const durationParam = searchParams.get("duration");
+    const excludeAppointmentId =
+      searchParams.get("excludeAppointmentId") || undefined;
 
-  if (!dateStr || !durationStr) {
-    return NextResponse.json({ error: "Missing params" }, { status: 400 });
-  }
-
-  const duration = parseInt(durationStr);
-  const dateObj = new Date(dateStr + "T00:00:00");
-  const weekday = dateObj.getDay(); // 0 is Sunday
-
-  // Get Working Hours
-  const workingHours = await prisma.workingHours.findUnique({
-    where: { weekday },
-  });
-
-  if (!workingHours || !workingHours.active) {
-    return NextResponse.json({ times: [] });
-  }
-
-  // Get Blocked Dates
-  const blocked = await prisma.blockedDate.findUnique({
-    where: { date: dateStr }
-  });
-  if (blocked) {
-    return NextResponse.json({ times: [] });
-  }
-
-  // Carregar configurações do sistema
-  const settings = await prisma.settings.findFirst();
-
-  const statusesToCheck = ["CONFIRMED"];
-  if (!settings || settings.pendingBlocksSlot) {
-    statusesToCheck.push("PENDING");
-  }
-
-  // Get existing appointments
-  const appointments = await prisma.appointment.findMany({
-    where: {
-      date: dateStr,
-      status: { in: statusesToCheck }
-    }
-  });
-
-  const slots = [];
-  let current = parse(workingHours.startTime, "HH:mm", dateObj);
-  const end = parse(workingHours.endTime, "HH:mm", dateObj);
-  
-  let breakStart = null;
-  let breakEnd = null;
-  if (workingHours.breakStart && workingHours.breakEnd) {
-    breakStart = parse(workingHours.breakStart, "HH:mm", dateObj);
-    breakEnd = parse(workingHours.breakEnd, "HH:mm", dateObj);
-  }
-
-  const now = new Date();
-
-  while (addMinutes(current, duration) <= end) {
-    const slotEnd = addMinutes(current, duration);
-    
-    // Regra de antecedência mínima
-    const diffMinutes = (current.getTime() - now.getTime()) / (1000 * 60);
-    if (diffMinutes < (settings?.minAdvanceMinutes || 0)) {
-      current = addMinutes(current, 30);
-      continue;
+    if (!dateStr) {
+      return NextResponse.json(
+        { error: "Parâmetro date é obrigatório" },
+        { status: 400 }
+      );
     }
 
-    // Check lunch break
-    let overlapsBreak = false;
-    if (breakStart && breakEnd) {
-      if ((current >= breakStart && current < breakEnd) || 
-          (slotEnd > breakStart && slotEnd <= breakEnd) ||
-          (current <= breakStart && slotEnd >= breakEnd)) {
-        overlapsBreak = true;
+    let durationMins = durationParam ? parseInt(durationParam, 10) : 0;
+
+    if (serviceId) {
+      const svc = await prisma.service.findUnique({ where: { id: serviceId } });
+      if (!svc || !svc.active) {
+        return NextResponse.json(
+          { error: "Serviço inválido ou inativo", times: [] },
+          { status: 404 }
+        );
       }
+      durationMins = svc.duration;
     }
 
-    // Check appointments
-    let overlapsAppt = false;
-    for (const appt of appointments) {
-      const aStart = parse(appt.startTime, "HH:mm", dateObj);
-      const aEnd = parse(appt.endTime, "HH:mm", dateObj);
-      if ((current >= aStart && current < aEnd) || 
-          (slotEnd > aStart && slotEnd <= aEnd) ||
-          (current <= aStart && slotEnd >= aEnd)) {
-        overlapsAppt = true;
-        break;
-      }
+    if (!durationMins || isNaN(durationMins) || durationMins <= 0) {
+      durationMins = 90;
     }
 
-    if (!overlapsBreak && !overlapsAppt) {
-      slots.push(format(current, "HH:mm"));
-    }
+    const result = await getAvailableSlotsForDate(
+      dateStr,
+      durationMins,
+      excludeAppointmentId
+    );
 
-    // O incremento pode ser 30 min para gerar mais opções de horários se os serviços tiverem durações variadas.
-    current = addMinutes(current, 30);
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error("Error computing availability:", error);
+    return NextResponse.json(
+      { error: "Erro ao calcular disponibilidade", times: [] },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json({ times: slots });
 }

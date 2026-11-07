@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  role         String   @default("ADMIN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Client {
+  id           String        @id @default(cuid())
+  name         String
+  phone        String        @unique
+  email        String?
+  notes        String?
+  birthDate    String?
+  avatar       String?
+  category     String        @default("ativas") // ativas, frequentes, inativas
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  appointments Appointment[]
+}
+
+model Service {
+  id              String        @id @default(cuid())
+  name            String
+  description     String?
+  price           Float
+  duration        Int           // Em minutos (ex: 90, 120, 150, 30)
+  image           String        @default("/images/service-classica.png")
+  active          Boolean       @default(true)
+  requiresDeposit Boolean       @default(true)
+  sortOrder       Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  appointments    Appointment[]
+  galleryImages   GalleryImage[]
+}
+
+model GalleryImage {
+  id        String   @id @default(cuid())
+  url       String
+  type      String   @default("IMAGE")
+  order     Int      @default(0)
+  isFeature Boolean  @default(false)
+  createdAt DateTime @default(now())
+  serviceId String?
+  service   Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+}
+
+model Appointment {
+  id                String    @id @default(cuid())
+  clientId          String
+  serviceId         String
+  date              String    // Formato YYYY-MM-DD
+  startTime         String    // Formato HH:MM
+  endTime           String    // Formato HH:MM
+  status            String    @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED, REJECTED
+  paymentStatus     String    @default("PENDING_SIGNAL") // PENDING_SIGNAL, SIGNAL_PAID, FULL_PAID, REFUNDED
+  signalAmount      Float     @default(0)
+  totalAmount       Float     @default(0)
+  expiresAt         DateTime? // Prazo limite da reserva temporária aguardando comprovante (ex: +15 min)
+  receiptUrl        String?   // Arquivo/print do comprovante anexado pela cliente no site (Data URL)
+  receiptFileName   String?   // Nome do arquivo anexado (ex: comprovante.png ou comprovante.pdf)
+  receiptReportedAt DateTime? // Quando a cliente anexa/envia o comprovante (não confirma pagamento automaticamente)
+  signalPaidAt      DateTime? // Quando a profissional confirma manualmente o sinal
+  fullPaidAt        DateTime? // Quando o pagamento integral é confirmado manualmente
+  notes             String?
+  whatsappStatus    String    @default("NOT_SENT")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  service           Service   @relation(fields: [serviceId], references: [id])
+
+  @@index([date, status])
+}
+
+model WorkingHours {
+  id         String  @id @default(cuid())
+  weekday    Int     @unique // 0 (Dom) a 6 (Sáb)
+  startTime  String  // "09:00"
+  endTime    String  // "18:00"
+  breakStart String? // "12:00"
+  breakEnd   String? // "13:00"
+  active     Boolean @default(true)
+}
+
+model BlockedDate {
+  id        String  @id @default(cuid())
+  date      String  // Formato YYYY-MM-DD
+  startTime String? // Opcional: bloqueio parcial (ex: "14:00") ou null para dia inteiro
+  endTime   String? // Opcional: fim do bloqueio parcial (ex: "16:00")
+  reason    String?
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  description String
+  amount      Float
+  date        String   // Formato YYYY-MM-DD
+  category    String   @default("Materiais")
+  createdAt   DateTime @default(now())
+}
+
+model Settings {
+  id                String  @id @default(cuid())
+  professionalName  String  @default("Estética de Cílios")
+  specialty         String  @default("Extensão de Cílios")
+  description       String? @default("Extensão de cílios com técnica, segurança e um resultado natural.")
+  whatsapp          String  @default("")
+  pixKey            String  @default("000.000.000-00")
+  pixKeyType        String  @default("CPF")
+  signalPercentage  Int     @default(50)
+  holdMinutes       Int     @default(15)
+  minAdvanceMinutes Int     @default(0)
+  maxDaysAhead      Int     @default(60)
+  pendingBlocksSlot Boolean @default(true)
+}

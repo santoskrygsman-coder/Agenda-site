@@ -1,0 +1,539 @@
+"use client";
+
+import React, { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  User,
+  Calendar,
+  Clock,
+  Wallet,
+  X,
+  FileCheck2,
+  AlertCircle,
+} from "lucide-react";
+import MobileContainer from "@/components/ui/MobileContainer";
+import PageHeader from "@/components/ui/PageHeader";
+import PrimaryButton from "@/components/ui/PrimaryButton";
+import StatusBadge from "@/components/ui/StatusBadge";
+import { WhatsAppCircleIcon } from "@/components/ui/BotanicalDecor";
+import { useBooking } from "@/context/BookingContext";
+import {
+  buildExpiredAppointmentWhatsAppUrl,
+  buildProfessionalToClientWhatsAppUrl,
+} from "@/lib/whatsapp";
+import { getDefaultBookingDate, getTodayLocalIso } from "@/lib/validation";
+
+function AppointmentDetailsContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryId = searchParams.get("id");
+  const { selectedAppointment, setSelectedAppointment, studioSettings } =
+    useBooking();
+
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+
+  // Modal de remarcação
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [newDate, setNewDate] = useState(() => getDefaultBookingDate().iso);
+  const [newTime, setNewTime] = useState("14:00");
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchLatest = async () => {
+      const res = await fetch("/api/appointments");
+      if (!res.ok) return;
+      const list = await res.json();
+      if (queryId) {
+        const found = list.find((a: { id: string }) => a.id === queryId);
+        if (found) setSelectedAppointment(found);
+      } else if (!selectedAppointment && list.length > 0) {
+        setSelectedAppointment(list[0]);
+      } else if (selectedAppointment) {
+        const refreshed = list.find(
+          (a: { id: string }) => a.id === selectedAppointment.id
+        );
+        if (refreshed) setSelectedAppointment(refreshed);
+      }
+    };
+    fetchLatest();
+  }, [queryId]);
+
+  const appt = selectedAppointment;
+
+  useEffect(() => {
+    if (!rescheduleOpen || !appt) return;
+    const rawDate = appt.date || "2025-03-14";
+    setNewDate(rawDate);
+    setNewTime(appt.time);
+  }, [rescheduleOpen, appt]);
+
+  useEffect(() => {
+    if (!rescheduleOpen || !appt) return;
+    fetch(
+      `/api/availability?date=${newDate}&serviceId=${appt.serviceId}&excludeAppointmentId=${appt.id}`
+    )
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && Array.isArray(data.times)) {
+          setAvailableSlots(data.times);
+        }
+      })
+      .catch(() => {});
+  }, [rescheduleOpen, newDate, appt]);
+
+  const handleConfirmManual = async () => {
+    if (!appt) return;
+    setLoading(true);
+    setErrorMsg("");
+    const res = await fetch(`/api/appointments/${appt.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: "CONFIRMED",
+        paymentStatus: "SIGNAL_PAID",
+      }),
+    });
+    setLoading(false);
+
+    if (res.ok) {
+      setSelectedAppointment({
+        ...appt,
+        status: "confirmado",
+        statusLabel: "Sinal confirmado",
+      });
+      setFeedback("Status alterado para 'Sinal confirmado' manualmente pela profissional!");
+      setTimeout(() => setFeedback(""), 3000);
+    } else {
+      const data = await res.json();
+      setErrorMsg(data.error || "Erro ao confirmar agendamento.");
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!appt) return;
+    setLoading(true);
+    setErrorMsg("");
+    const res = await fetch(`/api/appointments/${appt.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: "CANCELLED",
+      }),
+    });
+    setLoading(false);
+
+    if (res.ok) {
+      setSelectedAppointment({
+        ...appt,
+        status: "agendado",
+        statusLabel: "Cancelado",
+      });
+      setFeedback("Agendamento cancelado e horário liberado na agenda.");
+      setTimeout(() => setFeedback(""), 3000);
+    } else {
+      const data = await res.json();
+      setErrorMsg(data.error || "Erro ao cancelar agendamento.");
+    }
+  };
+
+  const handleCompleteFullPayment = async () => {
+    if (!appt) return;
+    setLoading(true);
+    setErrorMsg("");
+    const res = await fetch(`/api/appointments/${appt.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: "COMPLETED",
+        paymentStatus: "FULL_PAID",
+      }),
+    });
+    setLoading(false);
+
+    if (res.ok) {
+      setSelectedAppointment({
+        ...appt,
+        status: "concluido",
+        statusLabel: "Concluído",
+      });
+      setMoreMenuOpen(false);
+      setFeedback(
+        "Atendimento concluído e pagamento integral (100%) registrado no financeiro!"
+      );
+      setTimeout(() => setFeedback(""), 3500);
+    } else {
+      const data = await res.json();
+      setErrorMsg(data.error || "Erro ao concluir atendimento.");
+    }
+  };
+
+  const handleDeletePermanent = async () => {
+    if (!appt) return;
+    setLoading(true);
+    const res = await fetch(`/api/appointments/${appt.id}`, {
+      method: "DELETE",
+    });
+    setLoading(false);
+    if (res.ok) {
+      router.push("/admin/agenda");
+    }
+  };
+
+  const handleRescheduleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!appt) return;
+    setLoading(true);
+    setErrorMsg("");
+
+    const res = await fetch(`/api/appointments/${appt.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        date: newDate,
+        startTime: newTime,
+      }),
+    });
+    const data = await res.json();
+    setLoading(false);
+
+    if (!res.ok) {
+      setErrorMsg(data.error || "Horário indisponível para remarcação.");
+      return;
+    }
+
+    setRescheduleOpen(false);
+    router.push("/admin/agenda");
+  };
+
+  if (!appt) {
+    return (
+      <MobileContainer showAdminNav activeAdminTab="agenda">
+        <PageHeader
+          title="Detalhes do agendamento"
+          leftType="back"
+          backHref="/admin/agenda"
+          rightType="more"
+        />
+        <div className="px-5 py-10 text-center">
+          <p className="text-[14px] text-[#5C4841]">
+            Selecione um agendamento na Agenda do dia para visualizar seus
+            detalhes.
+          </p>
+          <div className="mt-4">
+            <PrimaryButton href="/admin/agenda" variant="rose">
+              Voltar para a Agenda
+            </PrimaryButton>
+          </div>
+        </div>
+      </MobileContainer>
+    );
+  }
+
+  const rawDate = appt.date || "2025-03-14";
+  const dbStatus =
+    appt.status === "confirmado"
+      ? "CONFIRMED"
+      : appt.statusLabel === "Cancelado"
+      ? "CANCELLED"
+      : "PENDING";
+
+  const waUrl = buildProfessionalToClientWhatsAppUrl({
+    clientPhone: appt.clientPhone,
+    clientName: appt.clientName,
+    serviceName: appt.serviceName,
+    dateStr: rawDate,
+    timeStr: appt.time,
+    status: dbStatus,
+  });
+
+  const bookingOrigin =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/servicos`
+      : "https://agendamento-estetica.local/servicos";
+
+  const expiredWaUrl = buildExpiredAppointmentWhatsAppUrl({
+    clientPhone: appt.clientPhone,
+    clientName: appt.clientName,
+    dateStr: rawDate,
+    timeStr: appt.time,
+    studioName: studioSettings.professionalName,
+    bookingUrl: bookingOrigin,
+  });
+
+  return (
+    <MobileContainer showAdminNav activeAdminTab="agenda">
+      <PageHeader
+        title="Detalhes do agendamento"
+        leftType="back"
+        backHref="/admin/agenda"
+        rightType="more"
+        onRightClick={() => setMoreMenuOpen((prev) => !prev)}
+      />
+
+      {moreMenuOpen && (
+        <div className="mx-5 mb-2 bg-[#FAF5F1] border border-[#E5D4C9] rounded-[14px] p-2 shadow-lg space-y-1">
+          <button
+            type="button"
+            onClick={handleCompleteFullPayment}
+            className="w-full text-left px-3 py-2 rounded-[10px] text-[12.5px] font-semibold text-[#2E8540] hover:bg-[#D8EFDC]/60"
+          >
+            ✓ Concluir atendimento (Receber 100%)
+          </button>
+          <button
+            type="button"
+            onClick={handleDeletePermanent}
+            className="w-full text-left px-3 py-2 rounded-[10px] text-[12.5px] font-semibold text-[#B84A48] hover:bg-[#F3D8D8]/60"
+          >
+            Excluir agendamento permanentemente
+          </button>
+        </div>
+      )}
+
+      <div className="px-5 pt-1 pb-6 flex-1 flex flex-col justify-between">
+        <div>
+          {/* Top Centered Status Pill */}
+          <div className="flex justify-center my-2">
+            <StatusBadge
+              status={appt.status}
+              label={appt.statusLabel}
+              size="md"
+            />
+          </div>
+
+          {feedback && (
+            <div className="my-2 bg-[#D8EFDC] text-[#2E8540] text-[12px] font-semibold px-3 py-2 rounded-[12px] text-center">
+              {feedback}
+            </div>
+          )}
+
+          {errorMsg && (
+            <div className="my-2 bg-[#F3D8D8] text-[#B84A48] text-[12px] font-semibold px-3 py-2 rounded-[12px] text-center">
+              {errorMsg}
+            </div>
+          )}
+
+          {/* Client Row */}
+          <div className="mt-2 py-3.5 border-b border-[#E6D9D0] flex items-center justify-between">
+            <div className="flex items-center gap-3.5">
+              <User size={19} className="text-[#3D2923] shrink-0" />
+              <div>
+                <h2 className="text-[15.5px] font-bold text-[#2D1C18] leading-tight">
+                  {appt.clientName}
+                </h2>
+                <p className="text-[13px] text-[#5C4841] mt-0.5">
+                  {appt.clientPhone}
+                </p>
+              </div>
+            </div>
+
+            <a
+              href={waUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1 rounded-full hover:scale-105 transition"
+              aria-label="Conversar no WhatsApp com mensagem pré-preenchida"
+            >
+              <WhatsAppCircleIcon size={26} variant="green" />
+            </a>
+          </div>
+
+          {/* Date, Time & Service Rows */}
+          <div className="divide-y divide-[#ECE0D8] border-b border-[#E6D9D0]">
+            <div className="py-3 flex items-center gap-3.5 text-[13.5px] text-[#2D1C18]">
+              <Calendar size={18} className="text-[#4E3B35] shrink-0" />
+              <span className="font-semibold">{appt.dateFormatted}</span>
+            </div>
+
+            <div className="py-3 flex items-center gap-3.5 text-[13.5px] text-[#2D1C18]">
+              <Clock size={18} className="text-[#4E3B35] shrink-0" />
+              <span className="font-bold">
+                {appt.time} - {appt.endTime}
+              </span>
+            </div>
+
+            <div className="py-3 flex items-start gap-3.5 text-[13.5px] text-[#2D1C18]">
+              <Wallet size={18} className="text-[#4E3B35] shrink-0 mt-1" />
+              <div>
+                <p className="font-semibold text-[14px]">{appt.serviceName}</p>
+                <p className="font-bold text-[15px] mt-1">
+                  {appt.priceFormatted}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Card de Status do Sinal (Confirmação exclusiva via WhatsApp pela profissional) */}
+          <div className="mt-3.5 bg-[#FAF5F1] border border-[#E7DAD1] rounded-[16px] p-3.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {appt.status === "confirmado" || appt.status === "concluido" ? (
+                  <FileCheck2 size={17} className="text-[#2E8540] shrink-0" />
+                ) : (
+                  <AlertCircle size={17} className="text-[#B87472] shrink-0" />
+                )}
+                <div>
+                  <h3 className="text-[13px] font-bold text-[#2D1C18]">
+                    Comprovante do Sinal (via WhatsApp)
+                  </h3>
+                  <p className="text-[11.5px] text-[#5C4841]">
+                    {appt.status === "confirmado" || appt.status === "concluido"
+                      ? "Sinal confirmado manualmente pela profissional"
+                      : appt.receiptReportedAt
+                      ? "Aguardando confirmação • Cliente abriu o WhatsApp para enviar o comprovante"
+                      : "Aguardando confirmação • Comprovante deve ser conferido no WhatsApp"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 3 Action Buttons */}
+          <div className="mt-3.5 space-y-2.5">
+            {appt.status === "confirmado" ? (
+              <PrimaryButton
+                variant="confirm"
+                onClick={handleCompleteFullPayment}
+              >
+                {loading
+                  ? "Processando..."
+                  : "Concluir atendimento (Receber restante)"}
+              </PrimaryButton>
+            ) : (
+              <PrimaryButton variant="confirm" onClick={handleConfirmManual}>
+                {loading
+                  ? "Processando..."
+                  : "Confirmar sinal (Sinal confirmado)"}
+              </PrimaryButton>
+            )}
+
+            <PrimaryButton
+              variant="neutral"
+              onClick={() => setRescheduleOpen(true)}
+            >
+              Remarcar
+            </PrimaryButton>
+
+            <PrimaryButton variant="danger-soft" onClick={handleCancel}>
+              Cancelar
+            </PrimaryButton>
+
+            {appt.statusLabel === "Cancelado" ||
+            appt.status === "aguardando" ? (
+              <a
+                href={expiredWaUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full bg-[#F5E6DF] hover:bg-[#EDD8CE] border border-[#E2C8BE] text-[#4A3630] rounded-[14px] py-2.5 px-3 flex items-center justify-center gap-2 text-[12px] font-semibold transition"
+              >
+                <WhatsAppCircleIcon size={16} variant="green" />
+                <span>
+                  Avisar cliente que o horário foi liberado (falta de sinal)
+                </span>
+              </a>
+            ) : null}
+          </div>
+
+          {/* Client Notes Card */}
+          <div className="mt-3.5 bg-[#FAF5F1] border border-[#E7DAD1] rounded-[16px] px-4 py-3">
+            <h3 className="text-[13.5px] font-bold text-[#2D1C18]">
+              Observações da cliente
+            </h3>
+            <p className="text-[13px] text-[#5C4841] mt-1">
+              {appt.notes || "Nenhuma observação informada."}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal de Remarcação com verificação real de disponibilidade */}
+      {rescheduleOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#2D1C18]/45 p-3">
+          <div className="w-full max-w-[390px] bg-[#F8F1EB] border border-[#E6D8CF] rounded-[22px] p-5 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E6D8CF]">
+              <h3 className="font-serif text-[18px] font-semibold text-[#2D1C18]">
+                Remarcar agendamento
+              </h3>
+              <button
+                type="button"
+                onClick={() => setRescheduleOpen(false)}
+                className="w-7 h-7 rounded-full bg-[#EADCD3] flex items-center justify-center text-[#2D1C18]"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleRescheduleSubmit} className="mt-3 space-y-3">
+              <div>
+                <label className="block text-[12px] font-semibold text-[#4E3B35] mb-1">
+                  Nova data
+                </label>
+                <input
+                  type="date"
+                  required
+                  min={getTodayLocalIso()}
+                  value={newDate}
+                  onChange={(e) => setNewDate(e.target.value)}
+                  className="w-full bg-[#FAF5F1] border border-[#E4D5CB] rounded-[11px] px-3 py-2 text-[13.5px]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-semibold text-[#4E3B35] mb-1">
+                  Horários disponíveis na data
+                </label>
+                {availableSlots.length === 0 ? (
+                  <p className="text-[12.5px] text-[#B84A48] py-2">
+                    Nenhum horário disponível nesta data.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {availableSlots.map((slot) => (
+                      <button
+                        key={slot}
+                        type="button"
+                        onClick={() => setNewTime(slot)}
+                        className={`py-2 rounded-[10px] text-[12.5px] border ${
+                          newTime === slot
+                            ? "bg-[#B87472] text-white border-[#B87472] font-bold"
+                            : "bg-[#FAF5F1] text-[#2D1C18] border-[#E4D5CB]"
+                        }`}
+                      >
+                        {slot}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2">
+                <PrimaryButton
+                  type="submit"
+                  variant="rose"
+                  disabled={
+                    loading ||
+                    availableSlots.length === 0 ||
+                    !newTime ||
+                    !availableSlots.includes(newTime)
+                  }
+                >
+                  Salvar novo horário
+                </PrimaryButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </MobileContainer>
+  );
+}
+
+export default function AppointmentDetailsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-dvh bg-[#F4EAE3]" />}>
+      <AppointmentDetailsContent />
+    </Suspense>
+  );
+}

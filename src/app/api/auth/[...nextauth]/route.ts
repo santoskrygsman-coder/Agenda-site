@@ -1,27 +1,6 @@
-import NextAuth from "next-auth"
-import CredentialsProvider from "next-auth/providers/credentials"
-
-export const authOptions = {
-  providers: [
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        username: { label: "Usuário", type: "text", placeholder: "admin" },
-        password: { label: "Senha", type: "password" }
-      },
-      async authorize(credentials, req) {
-        if (credentials?.username === "admin" && credentials?.password === "admin123") {
-          return { id: "1", name: "Designer", email: "admin@admin.com" }
-        }
-        return null
-      }
-    })
-  ],
-  pages: {
-    signIn: "/login"
-  }
-};
+import NextAuth from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 const handler = NextAuth(authOptions);
 
-export { handler as GET, handler as POST }
+export { handler as GET, handler as POST };

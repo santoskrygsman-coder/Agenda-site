@@ -1,79 +1,281 @@
 import { prisma } from "./prisma";
-import { parse, addMinutes, isBefore, format } from "date-fns";
+import { Prisma } from "@prisma/client";
+import { getTodayLocalIso, isPastDate } from "./validation";
+
+// Fila de serialização em memória para complementar transações do banco e impedir condições de corrida (race conditions)
+let bookingLockPromise: Promise<unknown> = Promise.resolve();
+
+export function withBookingLock<T>(fn: () => Promise<T>): Promise<T> {
+  const next = bookingLockPromise.then(fn, fn);
+  bookingLockPromise = next.then(
+    () => undefined,
+    () => undefined
+  );
+  return next;
+}
 
 /**
- * Função utilitária para verificar se um horário com duração X está disponível 
- * na data especificada, dadas as regras de negócio.
+ * Em produção no PostgreSQL (Supabase + Netlify Functions), adquire um bloqueio
+ * consultivo transacional (pg_advisory_xact_lock) por profissional e data.
+ * Isso serializa reservas concorrentes para o mesmo dia mesmo entre múltiplas
+ * instâncias serverless, impedindo duplicidade de horários.
  */
-export async function isTimeAvailable(dateStr: string, startTime: string, durationMins: number) {
-  const dateObj = new Date(dateStr + "T00:00:00");
+export async function acquirePostgresBookingLock(
+  tx: Prisma.TransactionClient,
+  dateStr: string,
+  professionalKey = "default-professional"
+): Promise<void> {
+  const dbUrl = process.env.DATABASE_URL || "";
+  if (dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://")) {
+    const lockKey = `booking:${professionalKey}:${dateStr}`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+  }
+}
+
+export function timeToMinutes(hhmm: string): number {
+  const [h, m] = (hhmm || "00:00").split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+export function minutesToTime(totalMinutes: number): string {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+export function intervalsOverlap(
+  startA: number,
+  endA: number,
+  startB: number,
+  endB: number
+): boolean {
+  return startA < endB && endA > startB;
+}
+
+/**
+ * Libera automaticamente horários em que o prazo de reserva (expiresAt) venceu
+ * sem envio de comprovante e sem confirmação de pagamento.
+ */
+export async function expireOverduePendingAppointments(
+  db: Prisma.TransactionClient | typeof prisma = prisma
+): Promise<number> {
+  const now = new Date();
+  const result = await db.appointment.updateMany({
+    where: {
+      status: "PENDING",
+      paymentStatus: "PENDING_SIGNAL",
+      receiptReportedAt: null,
+      expiresAt: {
+        not: null,
+        lt: now,
+      },
+    },
+    data: {
+      status: "CANCELLED",
+    },
+  });
+  return result.count;
+}
+
+export async function getAvailableSlotsForDate(
+  dateStr: string,
+  durationMins: number,
+  excludeAppointmentId?: string,
+  db: Prisma.TransactionClient | typeof prisma = prisma
+): Promise<{
+  available: boolean;
+  reason?: string;
+  times: string[];
+}> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr) || durationMins <= 0) {
+    return { available: false, reason: "Parâmetros inválidos", times: [] };
+  }
+
+  if (isPastDate(dateStr)) {
+    return {
+      available: false,
+      reason: "Não é permitido agendar em datas passadas.",
+      times: [],
+    };
+  }
+
+  await expireOverduePendingAppointments(db);
+
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dateObj = new Date(y, m - 1, d);
   const weekday = dateObj.getDay();
 
-  // 1. Expediente ativo
-  const workingHours = await prisma.workingHours.findUnique({ where: { weekday } });
-  if (!workingHours || !workingHours.active) return false;
-
-  const startObj = parse(startTime, "HH:mm", dateObj);
-  const endObj = addMinutes(startObj, durationMins);
-
-  const whStart = parse(workingHours.startTime, "HH:mm", dateObj);
-  const whEnd = parse(workingHours.endTime, "HH:mm", dateObj);
-
-  // Fora do expediente?
-  if (startObj < whStart || endObj > whEnd) return false;
-
-  // 2. Bloqueio de data
-  const blocked = await prisma.blockedDate.findUnique({ where: { date: dateStr } });
-  if (blocked) return false;
-
-  // 3. Intervalo (Almoço)
-  if (workingHours.breakStart && workingHours.breakEnd) {
-    const breakStart = parse(workingHours.breakStart, "HH:mm", dateObj);
-    const breakEnd = parse(workingHours.breakEnd, "HH:mm", dateObj);
-
-    if (
-      (startObj >= breakStart && startObj < breakEnd) || 
-      (endObj > breakStart && endObj <= breakEnd) ||
-      (startObj <= breakStart && endObj >= breakEnd)
-    ) {
-      return false; // Sobrepõe o almoço
-    }
-  }
-
-  // 4. Configurações de Regra (Settings)
-  const settings = await prisma.settings.findFirst();
-  
-  if (settings) {
-    // Regra de antecedência
-    const now = new Date();
-    const diffMinutes = (startObj.getTime() - now.getTime()) / (1000 * 60);
-    if (diffMinutes < settings.minAdvanceMinutes) return false;
-  }
-
-  // 5. Conflito com agendamentos (PENDING ou CONFIRMED)
-  const statusesToCheck = ["CONFIRMED"];
-  if (!settings || settings.pendingBlocksSlot) {
-    statusesToCheck.push("PENDING");
-  }
-
-  const appointments = await prisma.appointment.findMany({
-    where: {
-      date: dateStr,
-      status: { in: statusesToCheck }
-    }
+  // 1. Verificar horário de funcionamento e folga semanal
+  const workingHours = await db.workingHours.findUnique({
+    where: { weekday },
   });
 
-  for (const appt of appointments) {
-    const aStart = parse(appt.startTime, "HH:mm", dateObj);
-    const aEnd = parse(appt.endTime, "HH:mm", dateObj);
-    
-    // Sobreposição estrita (não toca nas bordas)
+  if (!workingHours || !workingHours.active) {
+    return { available: false, reason: "Dia de folga", times: [] };
+  }
+
+  // 2. Verificar bloqueios na data (dia inteiro ou parcial)
+  const blockedRecords = await db.blockedDate.findMany({
+    where: { date: dateStr },
+  });
+
+  const fullDayBlock = blockedRecords.find(
+    (b) => !b.startTime || !b.endTime
+  );
+  if (fullDayBlock) {
+    return {
+      available: false,
+      reason: fullDayBlock.reason || "Data bloqueada",
+      times: [],
+    };
+  }
+
+  // 3. Buscar agendamentos ativos na data (PENDING, CONFIRMED, COMPLETED)
+  const settings = await db.settings.findFirst();
+  const statusesToBlock = ["CONFIRMED", "COMPLETED"];
+  if (!settings || settings.pendingBlocksSlot) {
+    statusesToBlock.push("PENDING");
+  }
+
+  const existingAppointments = await db.appointment.findMany({
+    where: {
+      date: dateStr,
+      status: { in: statusesToBlock },
+      ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
+    },
+  });
+
+  const whStart = timeToMinutes(workingHours.startTime);
+  const whEnd = timeToMinutes(workingHours.endTime);
+
+  const hasBreak = Boolean(workingHours.breakStart && workingHours.breakEnd);
+  const breakStart = hasBreak ? timeToMinutes(workingHours.breakStart!) : -1;
+  const breakEnd = hasBreak ? timeToMinutes(workingHours.breakEnd!) : -1;
+
+  const partialBlocks = blockedRecords
+    .filter((b) => b.startTime && b.endTime)
+    .map((b) => ({
+      start: timeToMinutes(b.startTime!),
+      end: timeToMinutes(b.endTime!),
+    }));
+
+  const bookedIntervals = existingAppointments.map((a) => ({
+    start: timeToMinutes(a.startTime),
+    end: timeToMinutes(a.endTime),
+  }));
+
+  const slots: string[] = [];
+  let cursor = whStart;
+  const isToday = dateStr === getTodayLocalIso();
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  while (cursor + durationMins <= whEnd) {
+    const slotStart = cursor;
+    const slotEnd = cursor + durationMins;
+
+    // Impedir horários que já passaram no dia de hoje
+    const isPastSlotToday = isToday && slotStart <= currentMinutes;
+
+    // Verificar intervalo de almoço / pausa
+    const overlapsBreak =
+      hasBreak && intervalsOverlap(slotStart, slotEnd, breakStart, breakEnd);
+
+    // Verificar bloqueios parciais
+    const overlapsPartialBlock = partialBlocks.some((b) =>
+      intervalsOverlap(slotStart, slotEnd, b.start, b.end)
+    );
+
+    // Verificar conflito com outros agendamentos
+    const overlapsAppointment = bookedIntervals.some((appt) =>
+      intervalsOverlap(slotStart, slotEnd, appt.start, appt.end)
+    );
+
     if (
-      (startObj >= aStart && startObj < aEnd) || 
-      (endObj > aStart && endObj <= aEnd) ||
-      (startObj <= aStart && endObj >= aEnd)
+      !isPastSlotToday &&
+      !overlapsBreak &&
+      !overlapsPartialBlock &&
+      !overlapsAppointment
     ) {
-      return false; // Sobrepõe um agendamento existente
+      slots.push(minutesToTime(slotStart));
+    }
+
+    cursor += 30;
+  }
+
+  return { available: slots.length > 0, times: slots };
+}
+
+export async function isTimeAvailable(
+  dateStr: string,
+  startTime: string,
+  durationMins: number,
+  excludeAppointmentId?: string,
+  db: Prisma.TransactionClient | typeof prisma = prisma
+): Promise<boolean> {
+  if (!/^\d{2}:\d{2}$/.test(startTime)) return false;
+  if (isPastDate(dateStr)) return false;
+
+  await expireOverduePendingAppointments(db);
+
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  const weekday = dateObj.getDay();
+
+  const workingHours = await db.workingHours.findUnique({
+    where: { weekday },
+  });
+  if (!workingHours || !workingHours.active) return false;
+
+  const slotStart = timeToMinutes(startTime);
+  const slotEnd = slotStart + durationMins;
+  const whStart = timeToMinutes(workingHours.startTime);
+  const whEnd = timeToMinutes(workingHours.endTime);
+
+  if (slotStart < whStart || slotEnd > whEnd) return false;
+
+  if (dateStr === getTodayLocalIso()) {
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    if (slotStart <= currentMinutes) return false;
+  }
+
+  if (workingHours.breakStart && workingHours.breakEnd) {
+    const bStart = timeToMinutes(workingHours.breakStart);
+    const bEnd = timeToMinutes(workingHours.breakEnd);
+    if (intervalsOverlap(slotStart, slotEnd, bStart, bEnd)) return false;
+  }
+
+  const blockedRecords = await db.blockedDate.findMany({
+    where: { date: dateStr },
+  });
+
+  for (const b of blockedRecords) {
+    if (!b.startTime || !b.endTime) return false;
+    const bs = timeToMinutes(b.startTime);
+    const be = timeToMinutes(b.endTime);
+    if (intervalsOverlap(slotStart, slotEnd, bs, be)) return false;
+  }
+
+  const settings = await db.settings.findFirst();
+  const statusesToBlock = ["CONFIRMED", "COMPLETED"];
+  if (!settings || settings.pendingBlocksSlot) {
+    statusesToBlock.push("PENDING");
+  }
+
+  const existingAppointments = await db.appointment.findMany({
+    where: {
+      date: dateStr,
+      status: { in: statusesToBlock },
+      ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
+    },
+  });
+
+  for (const appt of existingAppointments) {
+    const aStart = timeToMinutes(appt.startTime);
+    const aEnd = timeToMinutes(appt.endTime);
+    if (intervalsOverlap(slotStart, slotEnd, aStart, aEnd)) {
+      return false;
     }
   }
 

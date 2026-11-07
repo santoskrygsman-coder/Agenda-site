@@ -1,76 +1,207 @@
-import { prisma } from "@/lib/prisma";
-import BookingWizard from "@/components/BookingWizard";
-import PublicGallery from "@/components/PublicGallery";
-import Reveal from "@/components/Reveal";
+"use client";
 
-export const dynamic = "force-dynamic";
+import React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Menu, ShoppingBag, Heart, Smile, ChevronRight, Clock, Share2, Check } from "lucide-react";
+import MobileContainer from "@/components/ui/MobileContainer";
+import PrimaryButton from "@/components/ui/PrimaryButton";
+import ServiceCard from "@/components/ui/ServiceCard";
+import {
+  BotanicalSprigRight,
+  WhatsAppCircleIcon,
+} from "@/components/ui/BotanicalDecor";
+import { useBooking } from "@/context/BookingContext";
+import { buildGeneralContactWhatsAppUrl } from "@/lib/whatsapp";
 
-export default async function Home() {
-  const services = await prisma.service.findMany({
-    where: { active: true },
-    orderBy: { name: "asc" },
-    include: { galleryImages: true }
-  });
+export default function ClientHomePage() {
+  const router = useRouter();
+  const {
+    services,
+    setSelectedServiceById,
+    setIsMenuOpen,
+    studioSettings,
+    todayOpenStatus,
+  } = useBooking();
+  const [sharedCopied, setSharedCopied] = React.useState(false);
+  const featuredService = services[0];
 
-  const settings = await prisma.settings.findFirst();
-  const gallery = await prisma.galleryImage.findMany({
-    where: { serviceId: null },
-    orderBy: { order: "asc" }
-  });
+  const whatsappHref = buildGeneralContactWhatsAppUrl(studioSettings.whatsapp);
+
+  const handleShare = async () => {
+    const shareUrl =
+      typeof window !== "undefined" ? window.location.origin : "";
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: studioSettings.professionalName,
+          text: "Agende seu horário de extensão de cílios online:",
+          url: shareUrl,
+        });
+        return;
+      } catch {
+        // Fallback para copiar link
+      }
+    }
+    if (typeof navigator !== "undefined" && navigator.clipboard && shareUrl) {
+      await navigator.clipboard.writeText(shareUrl);
+      setSharedCopied(true);
+      setTimeout(() => setSharedCopied(false), 2000);
+    }
+  };
 
   return (
-    <main className="max-w-md mx-auto min-h-screen bg-[#FCFAFA] sm:shadow-2xl sm:shadow-pink-900/5 sm:rounded-[2rem] sm:my-8 overflow-hidden flex flex-col font-sans text-[#3A3335]">
-      {/* HEADER PREMIUM */}
-      <div className="bg-gradient-to-b from-[#FFF5F5] to-[#FCFAFA] px-6 pt-10 pb-6 text-center shrink-0 border-b border-[#F3E8E8]">
-        
-        <Reveal animation="zoom-in" delay={0}>
-          <div className="w-28 h-28 bg-white rounded-full mx-auto mb-5 overflow-hidden border-4 border-white shadow-[0_4px_20px_rgba(0,0,0,0.05)] flex items-center justify-center text-[#B98389]">
-            {settings?.avatarUrl ? (
-              <img src={settings.avatarUrl} alt="Profissional" className="w-full h-full object-cover" />
-            ) : (
-              <span className="font-serif italic text-4xl text-[#B98389]">
-                {settings?.professionalName?.charAt(0) || "P"}
-              </span>
-            )}
+    <MobileContainer>
+      {/* HERO SECTION */}
+      <div className="relative w-full overflow-hidden">
+        {/* Hero Eye Image */}
+        <div className="relative w-full h-[270px] bg-[#EDDCD2]">
+          <img
+            src="/images/hero-eye.png"
+            alt="Extensão de cílios realista"
+            className="w-full h-full object-cover object-center"
+          />
+          {/* Smooth bottom gradient fade into warm nude-cream background */}
+          <div
+            className="absolute inset-x-0 bottom-0 h-[110px] pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(to bottom, rgba(244,234,227,0) 0%, rgba(244,234,227,0.85) 62%, #F4EAE3 100%)",
+            }}
+          />
+        </div>
+
+        {/* Top Floating Bar (Hamburger & WhatsApp) */}
+        <div className="absolute top-4 inset-x-0 px-5 flex items-center justify-between z-20">
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen(true)}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-[#2D1C18] hover:bg-white/30 active:scale-95 transition"
+            aria-label="Abrir menu de navegação"
+          >
+            <Menu size={23} strokeWidth={2} />
+          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleShare}
+              className="w-8 h-8 rounded-full bg-[#FAF5F1]/80 border border-[#E5D4C9] flex items-center justify-center text-[#2D1C18] hover:bg-[#FAF5F1] transition"
+              aria-label="Compartilhar link de agendamento"
+              title="Compartilhar link"
+            >
+              {sharedCopied ? <Check size={14} className="text-[#2E8540]" /> : <Share2 size={14} />}
+            </button>
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-9 h-9 rounded-full flex items-center justify-center hover:scale-105 transition"
+              aria-label="Contato via WhatsApp"
+            >
+              <WhatsAppCircleIcon size={27} variant="light" />
+            </a>
           </div>
-        </Reveal>
-        
-        <Reveal animation="fade-up" delay={150}>
-          <h1 className="text-2xl font-bold tracking-tight text-[#3A3335] flex items-center justify-center gap-2">
-            <span className="text-[#D4A373] text-sm animate-pulse-slow">✦</span>
-            {settings?.professionalName || "Profissional"}
-            <span className="text-[#D4A373] text-sm animate-pulse-slow" style={{ animationDelay: '2s' }}>✦</span>
+        </div>
+
+        {/* Hero Typography + CTA overlapping the lower fade */}
+        <div className="relative z-10 px-5 -mt-12 pb-5">
+          {/* Subtle golden botanical leaves on the right */}
+          <BotanicalSprigRight className="w-[120px] h-[85px] absolute right-0 top-3 opacity-85" />
+
+          <div className="flex flex-wrap items-center gap-1.5 mb-2">
+            <div className="inline-flex items-center gap-1.5 bg-[#FAF5F1]/90 border border-[#E4D2C7] rounded-full px-2.5 py-1 text-[11px] font-semibold text-[#4E3B35] shadow-2xs">
+              <Clock size={11.5} className="text-[#B87472]" />
+              <span>{todayOpenStatus}</span>
+            </div>
+            <span className="inline-flex items-center bg-[#F4E3DC]/90 border border-[#E5CEC4] rounded-full px-2.5 py-1 text-[10.5px] font-bold text-[#3D2923]">
+              {studioSettings.professionalName}
+            </span>
+          </div>
+
+          <h1 className="font-serif text-[32px] leading-[1.1] font-bold text-[#2D1C18] tracking-[-0.01em]">
+            Seu olhar
+            <br />
+            mais confiante
           </h1>
-        </Reveal>
-        
-        <Reveal animation="fade-up" delay={300}>
-          <p className="text-[#B98389] text-sm mt-1.5 font-medium tracking-wide uppercase">
-            {settings?.specialty || "Lash & Brow Designer"}
+
+          <p className="text-[13.5px] leading-[1.45] text-[#4E3B35] mt-2.5 max-w-[285px]">
+            Extensão de cílios com técnica, segurança e um resultado natural.
           </p>
-        </Reveal>
-        
-        {settings?.address && (
-          <Reveal animation="fade-up" delay={400}>
-            <p className="text-[#8B7E7F] text-xs mt-4 flex items-center justify-center gap-1 font-medium">
-              · {settings.address} ·
-            </p>
-          </Reveal>
-        )}
-        
-        {settings?.description && (
-          <Reveal animation="fade-up" delay={500}>
-            <p className="text-[#6B5E5F] text-sm mt-4 font-serif italic px-4 leading-relaxed">
-              "{settings.description}"
-            </p>
-          </Reveal>
-        )}
+
+          <div className="mt-4">
+            <PrimaryButton href="/servicos" variant="rose" showArrow>
+              Agendar meu horário
+            </PrimaryButton>
+          </div>
+        </div>
       </div>
-      
-      {/* MAIN CONTENT AREA */}
-      <div className="flex-1 bg-[#FCFAFA] p-5 sm:p-8 space-y-10">
-        <PublicGallery images={gallery} />
-        <BookingWizard services={services} settings={settings} />
+
+      {/* CURVED NUDE SURFACE WITH 3 FEATURE ICONS & NOSSOS SERVIÇOS */}
+      <div className="flex-1 bg-[#EFE2D9]/75 rounded-t-[32px] border-t border-[#E6D5CA] px-5 pt-5 pb-6 flex flex-col">
+        {/* 3 Feature Icons Row */}
+        <div className="grid grid-cols-3 gap-2 pb-5 border-b border-[#E5D4C9]/80">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-10 h-10 rounded-full bg-[#F9F2ED] border border-[#E5D4C9] flex items-center justify-center text-[#3D2923] mb-2">
+              <Smile size={19} strokeWidth={1.7} />
+            </div>
+            <span className="text-[11.5px] leading-[1.25] text-[#3D2A24] font-medium">
+              Atendimento
+              <br />
+              personalizado
+            </span>
+          </div>
+
+          <div className="flex flex-col items-center text-center">
+            <div className="w-10 h-10 rounded-full bg-[#F9F2ED] border border-[#E5D4C9] flex items-center justify-center text-[#3D2923] mb-2">
+              <ShoppingBag size={18} strokeWidth={1.7} />
+            </div>
+            <span className="text-[11.5px] leading-[1.25] text-[#3D2A24] font-medium">
+              Produtos
+              <br />
+              de qualidade
+            </span>
+          </div>
+
+          <div className="flex flex-col items-center text-center">
+            <div className="w-10 h-10 rounded-full bg-[#F9F2ED] border border-[#E5D4C9] flex items-center justify-center text-[#3D2923] mb-2">
+              <Heart size={18} strokeWidth={1.7} />
+            </div>
+            <span className="text-[11.5px] leading-[1.25] text-[#3D2A24] font-medium">
+              Ambiente
+              <br />
+              acolhedor
+            </span>
+          </div>
+        </div>
+
+        {/* Nossos serviços section */}
+        <div className="pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-[16px] font-bold text-[#2D1C18]">
+              Nossos serviços
+            </h2>
+            <Link
+              href="/servicos"
+              className="text-[13px] font-medium text-[#B87472] hover:text-[#9E5D5B] flex items-center gap-0.5"
+            >
+              <span>Ver todos</span>
+              <ChevronRight size={14} />
+            </Link>
+          </div>
+
+          {featuredService && (
+            <ServiceCard
+              service={featuredService}
+              mode="client"
+              onSelect={(svc) => {
+                setSelectedServiceById(svc.id);
+                router.push("/servicos");
+              }}
+            />
+          )}
+        </div>
       </div>
-    </main>
+    </MobileContainer>
   );
 }

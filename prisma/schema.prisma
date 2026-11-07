@@ -1,131 +1,136 @@
 generator client {
   provider = "prisma-client-js"
-  binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      String   @default("ADMIN")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  role         String   @default("ADMIN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Client {
-  id        String   @id @default(cuid())
-  name      String
-  phone     String   @unique
-  notes     String?
-  birthDate String?  // Novo: Formato DD/MM ou YYYY-MM-DD
-  createdAt DateTime @default(now())
+  id           String        @id @default(cuid())
+  name         String
+  phone        String        @unique
+  email        String?
+  notes        String?
+  birthDate    String?
+  avatar       String?
+  category     String        @default("ativas") // ativas, frequentes, inativas
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   appointments Appointment[]
 }
 
 model Service {
-  id              String   @id @default(cuid())
+  id              String         @id @default(cuid())
   name            String
   description     String?
   price           Float
-  duration        Int      // Minutos
-  active          Boolean  @default(true)
-  requiresDeposit Boolean  @default(false) // Novo: Exigir sinal
-  createdAt       DateTime @default(now())
+  duration        Int            // Em minutos (ex: 90, 120, 150, 30)
+  image           String         @default("/images/service-classica.png")
+  active          Boolean        @default(true)
+  requiresDeposit Boolean        @default(true)
+  sortOrder       Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   appointments    Appointment[]
-  galleryImages   GalleryImage[] // Relacionamento com imagens
-}
-
-model Appointment {
-  id             String   @id @default(cuid())
-  clientId       String
-  serviceId      String
-  date           String   // Formato YYYY-MM-DD para facilitar buscas
-  startTime      String   // Formato HH:MM
-  endTime        String   // Formato HH:MM
-  status         String   @default("PENDING") // PENDING, CONFIRMED, REJECTED, CANCELLED, COMPLETED
-  notes          String?
-  paymentStatus  String   @default("PENDING") // Novo: PENDING, PAID_MANUALLY (usado para o sinal)
-  
-  whatsappStatus String   @default("NOT_SENT") // NOT_SENT, OPENED, SENT_MANUALLY
-  whatsappOpenedAt DateTime?
-  
-  reminder1SentAt DateTime? // Novo: Controle de lembretes
-  reminder2SentAt DateTime?
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  client         Client   @relation(fields: [clientId], references: [id])
-  service        Service  @relation(fields: [serviceId], references: [id])
-}
-
-model WorkingHours {
-  id         String   @id @default(cuid())
-  weekday    Int      // 0 (Dom) a 6 (Sab)
-  startTime  String   // "08:00"
-  endTime    String   // "18:00"
-  breakStart String?  // "12:00"
-  breakEnd   String?  // "13:00"
-  active     Boolean  @default(true)
-
-  @@unique([weekday])
-}
-
-model BlockedDate {
-  id        String   @id @default(cuid())
-  date      String   @unique // Formato YYYY-MM-DD
-  reason    String?
-}
-
-model Settings {
-  id                 String   @id @default(cuid())
-  professionalName   String   @default("Designer de Sobrancelhas")
-  specialty          String   @default("Especialista em olhar")
-  description        String?
-  address            String?
-  whatsapp           String?  // Opcional, para exibição pública
-  instagram          String?
-  
-  whatsappSystemNumber String? // Para envio de mensagens automáticas / deep links
-  
-  msgNewRequest      String   @default("✨ Nova solicitação de agendamento\n\nCliente: {cliente}\nData: {data}\nHorário: {horario}\nProcedimento: {procedimento}\n\nAguardando confirmação.")
-  msgConfirmed       String   @default("✅ Agendamento Confirmado!\n\nOlá {cliente}, seu horário para {procedimento} no dia {data} às {horario} está confirmado.")
-  msgRejected        String   @default("❌ Agendamento Não Confirmado\n\nOlá {cliente}, infelizmente não poderemos atender sua solicitação para o dia {data} às {horario}.")
-  
-  // Novos campos de Aniversário
-  birthdayBenefitActive Boolean @default(false)
-  birthdayBenefitType   String?
-  birthdayBenefitValue  String?
-  msgBirthday           String  @default("Olá, {cliente}! 💕\nPassando para desejar um feliz aniversário! 🎂✨\n\nDesejamos que seu dia seja maravilhoso!\n\nPreparamos um carinho especial para você:\n{beneficio}\n\nEsperamos você em breve! 💗")
-
-  // Novos campos de Lembretes
-  reminder1DaysBefore   Int     @default(1)
-  reminder2HoursBefore  Int     @default(2)
-  msgReminder1          String  @default("Olá, {cliente}! 💕\n\nPassando para lembrar do seu atendimento:\n\n✨ Procedimento: {procedimento}\n📅 Data: {data}\n⏰ Horário: {horario}\n\nEstamos te esperando! 💗")
-  msgReminder2          String  @default("Bom dia, {cliente}! ✨\n\nSeu atendimento está marcado para hoje:\n\n✨ {procedimento}\n⏰ {horario}\n\nAté logo! 💕")
-  
-  minAdvanceMinutes  Int      @default(30)
-  maxDaysAhead       Int      @default(30)
-  pendingBlocksSlot  Boolean  @default(true)
-
-  avatarUrl          String?  // Base64 ou URL da foto de perfil
+  galleryImages   GalleryImage[]
 }
 
 model GalleryImage {
   id        String   @id @default(cuid())
-  url       String   // Base64 string da imagem
-  type      String   @default("IMAGE") // "IMAGE" ou "INSTAGRAM"
+  url       String
+  type      String   @default("IMAGE")
   order     Int      @default(0)
   isFeature Boolean  @default(false)
   createdAt DateTime @default(now())
-  
-  // Novo: Associação com procedimento específico
   serviceId String?
   service   Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+}
+
+model Appointment {
+  id                String    @id @default(cuid())
+  clientId          String
+  serviceId         String
+  date              String    // Formato YYYY-MM-DD
+  startTime         String    // Formato HH:MM
+  endTime           String    // Formato HH:MM
+  status            String    @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED, REJECTED
+  paymentStatus     String    @default("PENDING_SIGNAL") // PENDING_SIGNAL, SIGNAL_PAID, FULL_PAID, REFUNDED
+  signalAmount      Float     @default(0)
+  totalAmount       Float     @default(0)
+  expiresAt         DateTime? // Prazo limite da reserva temporária aguardando comprovante (ex: +15 min)
+  receiptUrl        String?
+  receiptFileName   String?
+  receiptReportedAt DateTime? // Quando a cliente clica em Enviar comprovante pelo WhatsApp
+  signalPaidAt      DateTime? // Quando a profissional confirma manualmente o sinal
+  fullPaidAt        DateTime? // Quando o pagamento integral é confirmado manualmente
+  notes             String?
+  whatsappStatus    String    @default("NOT_SENT")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  service           Service   @relation(fields: [serviceId], references: [id])
+
+  @@index([date, status])
+  @@index([date, startTime])
+}
+
+model WorkingHours {
+  id         String  @id @default(cuid())
+  weekday    Int     @unique // 0 (Dom) a 6 (Sáb)
+  startTime  String  // "09:00"
+  endTime    String  // "18:00"
+  breakStart String? // "12:00"
+  breakEnd   String? // "13:00"
+  active     Boolean @default(true)
+}
+
+model BlockedDate {
+  id        String  @id @default(cuid())
+  date      String  // Formato YYYY-MM-DD
+  startTime String? // Opcional: bloqueio parcial (ex: "14:00") ou null para dia inteiro
+  endTime   String? // Opcional: fim do bloqueio parcial (ex: "16:00")
+  reason    String?
+
+  @@index([date])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  description String
+  amount      Float
+  date        String   // Formato YYYY-MM-DD
+  category    String   @default("Materiais")
+  createdAt   DateTime @default(now())
+
+  @@index([date])
+}
+
+model Settings {
+  id                String  @id @default(cuid())
+  professionalName  String  @default("Emile Lash Designer")
+  specialty         String  @default("Cílios • Sobrancelha • Brow Lamination • Lash Lifting")
+  description       String? @default("Centro - Posto da Mata • @emiledesiigner")
+  whatsapp          String  @default("")
+  pixKey            String  @default("000.000.000-00")
+  pixKeyType        String  @default("CPF")
+  signalPercentage  Int     @default(50)
+  holdMinutes       Int     @default(15)
+  minAdvanceMinutes Int     @default(0)
+  maxDaysAhead      Int     @default(60)
+  pendingBlocksSlot Boolean @default(true)
 }

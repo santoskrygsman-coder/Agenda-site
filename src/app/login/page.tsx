@@ -1,74 +1,113 @@
 "use client";
 
+import React, { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Lock } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Lock, User, AlertCircle } from "lucide-react";
+import MobileContainer from "@/components/ui/MobileContainer";
+import PageHeader from "@/components/ui/PageHeader";
+import PrimaryButton from "@/components/ui/PrimaryButton";
+import { BotanicalSprigBottomLeft } from "@/components/ui/BotanicalDecor";
 
-export default function Login() {
+function LoginFormContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/admin/agenda";
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
+
     const res = await signIn("credentials", {
       username,
       password,
       redirect: false,
     });
 
+    setLoading(false);
+
     if (res?.error) {
-      setError("Credenciais inválidas");
+      setError("Usuário ou senha inválidos. Verifique suas credenciais.");
     } else {
-      router.push("/admin");
+      router.push(callbackUrl);
+      router.refresh();
     }
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-pink-50 p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
-        <div className="bg-pink-100 p-8 text-center">
-          <div className="w-16 h-16 bg-pink-500 rounded-full mx-auto mb-4 flex items-center justify-center text-white shadow-md">
-            <Lock size={32} />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800">Acesso Restrito</h1>
-          <p className="text-pink-600 text-sm mt-1">Painel Administrativo da Designer</p>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="p-8 space-y-4">
-          {error && <p className="text-red-500 text-sm text-center bg-red-50 p-2 rounded">{error}</p>}
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Usuário</label>
-            <input 
-              required 
-              type="text" 
-              className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:outline-none"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
-            <input 
-              required 
-              type="password" 
-              className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:outline-none"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-            />
-          </div>
+    <MobileContainer>
+      <PageHeader
+        title="Acesso da Profissional"
+        leftType="back"
+        backHref="/"
+        rightType="botanical"
+      />
 
-          <button 
-            type="submit" 
-            className="w-full bg-pink-600 text-white font-bold text-lg p-4 rounded-xl mt-4 hover:bg-pink-700 transition-colors"
-          >
-            ENTRAR NO PAINEL
-          </button>
-        </form>
+      <div className="px-5 pt-4 pb-8 flex-1 flex flex-col justify-between relative">
+        <div>
+          <p className="text-[13.5px] leading-[1.45] text-[#3D2A24] mb-5">
+            Entre com suas credenciais administrativas para gerenciar sua agenda,
+            clientes, serviços e financeiro.
+          </p>
+
+          {error && (
+            <div className="mb-4 bg-[#F3D8D8] border border-[#E2B8B8] text-[#9E3836] rounded-[14px] px-3.5 py-2.5 text-[12.5px] flex items-center gap-2">
+              <AlertCircle size={16} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            <div className="w-full bg-[#FAF5F1] border border-[#E6D8CF] rounded-[14px] px-3.5 py-3 flex items-center gap-3 focus-within:border-[#B87472]">
+              <User size={18} className="text-[#4B3630] shrink-0" />
+              <input
+                type="text"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Usuário ou e-mail"
+                autoComplete="username"
+                className="flex-1 bg-transparent text-[13.5px] text-[#2D1C18] placeholder-[#7D6A63] focus:outline-none"
+              />
+            </div>
+
+            <div className="w-full bg-[#FAF5F1] border border-[#E6D8CF] rounded-[14px] px-3.5 py-3 flex items-center gap-3 focus-within:border-[#B87472]">
+              <Lock size={18} className="text-[#4B3630] shrink-0" />
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Sua senha"
+                autoComplete="current-password"
+                className="flex-1 bg-transparent text-[13.5px] text-[#2D1C18] placeholder-[#7D6A63] focus:outline-none"
+              />
+            </div>
+
+            <div className="pt-2">
+              <PrimaryButton type="submit" variant="rose" showArrow>
+                {loading ? "Entrando..." : "Entrar no painel"}
+              </PrimaryButton>
+            </div>
+          </form>
+        </div>
+
+        <BotanicalSprigBottomLeft className="w-[125px] h-[85px] opacity-75 -ml-4" />
       </div>
-    </main>
+    </MobileContainer>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-dvh bg-[#F4EAE3]" />}>
+      <LoginFormContent />
+    </Suspense>
   );
 }
