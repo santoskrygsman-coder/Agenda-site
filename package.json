@@ -13,6 +13,7 @@
     "db:use-sqlite": "node scripts/switch-prisma-provider.mjs sqlite && npx prisma generate",
     "db:migrate-data": "node scripts/migrate-sqlite-to-postgres.mjs",
     "db:migrate-auto": "node scripts/auto-migrate-supabase.mjs",
+    "deploy:auto": "node scripts/auto-deploy-netlify.mjs",
     "uploads:migrate": "node scripts/migrate-uploads-to-supabase.mjs"
   },
   "dependencies": {
