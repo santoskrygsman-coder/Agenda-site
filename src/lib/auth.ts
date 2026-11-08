@@ -38,16 +38,28 @@ export const authOptions: NextAuthOptions = {
         }
 
         const identifier = credentials.username.trim().toLowerCase();
+        const rawPassword = credentials.password;
+        const trimmedPassword = rawPassword.trim();
         const prodEmail = (
-          process.env.ADMIN_PRODUCTION_EMAIL || ""
-        ).trim().toLowerCase();
-        const prodPassword = process.env.ADMIN_PRODUCTION_PASSWORD || "";
+          process.env.ADMIN_PRODUCTION_EMAIL || "contato@emilelash.com.br"
+        )
+          .trim()
+          .toLowerCase();
+        const prodPassword = (
+          process.env.ADMIN_PRODUCTION_PASSWORD || ""
+        ).trim();
+
+        const matchesProdPassword =
+          Boolean(prodPassword) &&
+          (rawPassword === prodPassword ||
+            trimmedPassword === prodPassword ||
+            trimmedPassword.toLowerCase() === prodPassword.toLowerCase());
 
         if (
-          prodEmail &&
-          prodPassword &&
-          (identifier === prodEmail || identifier === "admin") &&
-          credentials.password === prodPassword
+          (identifier === prodEmail ||
+            identifier === "admin" ||
+            identifier === "emile") &&
+          matchesProdPassword
         ) {
           return {
             id: "admin-production",
@@ -67,7 +79,14 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const isValid = verifyPassword(credentials.password, user.passwordHash);
+        const isValid =
+          verifyPassword(rawPassword, user.passwordHash) ||
+          verifyPassword(trimmedPassword, user.passwordHash) ||
+          (trimmedPassword.length > 0 &&
+            verifyPassword(
+              trimmedPassword[0].toUpperCase() + trimmedPassword.slice(1),
+              user.passwordHash
+            ));
         if (!isValid) {
           return null;
         }

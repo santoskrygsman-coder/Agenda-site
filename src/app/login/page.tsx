@@ -2,20 +2,20 @@
 
 import React, { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Lock, User, AlertCircle } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Lock, User, AlertCircle, Eye, EyeOff } from "lucide-react";
 import MobileContainer from "@/components/ui/MobileContainer";
 import PageHeader from "@/components/ui/PageHeader";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import { BotanicalSprigBottomLeft } from "@/components/ui/BotanicalDecor";
 
 function LoginFormContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/admin/agenda";
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -25,8 +25,8 @@ function LoginFormContent() {
     setLoading(true);
 
     const res = await signIn("credentials", {
-      username,
-      password,
+      username: username.trim(),
+      password: password.trim(),
       redirect: false,
     });
 
@@ -35,8 +35,7 @@ function LoginFormContent() {
     if (res?.error) {
       setError("Usuário ou senha inválidos. Verifique suas credenciais.");
     } else {
-      router.push(callbackUrl);
-      router.refresh();
+      window.location.href = callbackUrl;
     }
   };
 
@@ -74,6 +73,8 @@ function LoginFormContent() {
                 placeholder="Usuário ou e-mail"
                 autoComplete="username"
                 autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 enterKeyHint="next"
                 className="flex-1 bg-transparent text-[14px] text-[#2D1C18] placeholder-[#7D6A63] focus:outline-none min-w-0"
               />
@@ -82,15 +83,26 @@ function LoginFormContent() {
             <div className="w-full bg-[#FAF5F1] border border-[#E6D8CF] rounded-[14px] px-3.5 py-3 min-h-[48px] flex items-center gap-3 focus-within:border-[#B87472]">
               <Lock size={18} className="text-[#4B3630] shrink-0" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Sua senha"
                 autoComplete="current-password"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 enterKeyHint="done"
                 className="flex-1 bg-transparent text-[14px] text-[#2D1C18] placeholder-[#7D6A63] focus:outline-none min-w-0"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[#6E5850] active:scale-95 transition touch-manipulation shrink-0"
+              >
+                {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
             </div>
 
             <div className="pt-2">
