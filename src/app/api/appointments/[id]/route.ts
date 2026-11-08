@@ -8,6 +8,8 @@ import {
   timeToMinutes,
   withBookingLock,
 } from "@/lib/scheduling";
+import { formatDateShortDdMm } from "@/lib/formatters";
+import { emitAdminNotification } from "@/lib/notifications";
 
 export async function PATCH(
   request: Request,
@@ -22,59 +24,47 @@ export async function PATCH(
     const { id } = await props.params;
     const body = await request.json();
 
-    const needsTransactionValidation =
-      Boolean(body.date) ||
-      Boolean(body.startTime) ||
-      body.status === "CONFIRMED" ||
-      body.paymentStatus === "SIGNAL_PAID" ||
-      body.paymentStatus === "FULL_PAID";
-
-    // Fast path para cancelamento ou atualização simples (1 única query SQL em vez de transação multi-roundtrip)
-    if (!needsTransactionValidation) {
-      const fastUpdate: Record<string, unknown> = {};
-      if (body.status !== undefined) fastUpdate.status = body.status;
-      if (body.notes !== undefined) fastUpdate.notes = body.notes;
-      if (body.whatsappStatus !== undefined) {
-        fastUpdate.whatsappStatus = body.whatsappStatus;
-      }
-      try {
-        const updatedFast = await prisma.appointment.update({
-          where: { id },
-          data: fastUpdate,
-        });
-        return NextResponse.json(updatedFast);
-      } catch {
-        return NextResponse.json(
-          { error: "Agendamento não encontrado" },
-          { status: 404 }
-        );
-      }
-    }
-
-    const updated = await withBookingLock(() =>
+    const result = await withBookingLock(() =>
       prisma.$transaction(async (tx) => {
         const existing = await tx.appointment.findUnique({
           where: { id },
-          include: { service: true },
+          include: { client: true, service: true },
         });
 
         if (!existing) {
           throw new Error("NOT_FOUND");
         }
 
+        // REGRAS DE SEGURANÇA PARA AGENDAMENTOS CANCELADOS (PROBLEMA 4)
+        if (existing.status === "CANCELLED") {
+          const isAttemptingConfirmationOrCompletion =
+            body.paymentStatus === "SIGNAL_PAID" ||
+            body.paymentStatus === "FULL_PAID" ||
+            body.status === "COMPLETED" ||
+            (body.status === "CONFIRMED" && body.reactivateCancelled !== true);
+
+          if (isAttemptingConfirmationOrCompletion) {
+            throw new Error("CANCELLED_CANNOT_CONFIRM");
+          }
+
+          const isAttemptingDirectReschedule =
+            (body.date !== undefined || body.startTime !== undefined) &&
+            body.reactivateCancelled !== true;
+
+          if (isAttemptingDirectReschedule) {
+            throw new Error("CANCELLED_CANNOT_RESCHEDULE");
+          }
+        }
+
         const dataToUpdate: Record<string, unknown> = {};
 
-        // Se houver remarcação de data/horário OU confirmação do agendamento/sinal,
-        // revalidar disponibilidade no servidor para impedir conflitos
-        const nextDate = body.date || existing.date;
-        const nextStartTime = body.startTime || existing.startTime;
-        const isRescheduling =
-          (body.date && body.date !== existing.date) ||
-          (body.startTime && body.startTime !== existing.startTime);
-        const isConfirming =
-          body.status === "CONFIRMED" || body.paymentStatus === "SIGNAL_PAID";
+        // Fluxo de reativação explícita de agendamento cancelado ("Reagendar atendimento cancelado")
+        if (existing.status === "CANCELLED" && body.reactivateCancelled === true) {
+          const nextDate = String(body.date || existing.date).trim();
+          const nextStartTime = String(
+            body.startTime || existing.startTime
+          ).trim();
 
-        if (isRescheduling || isConfirming) {
           await acquirePostgresBookingLock(tx, nextDate);
 
           const available = await isTimeAvailable(
@@ -83,39 +73,91 @@ export async function PATCH(
             existing.service.duration,
             existing.id,
             tx,
-            isRescheduling
-              ? { allowPastToday: true }
-              : {
-                  allowPastToday: true,
-                  allowPastDates: true,
-                  ignoreWorkingHours: true,
-                }
+            { allowPastToday: true }
           );
           if (!available) {
             throw new Error("SLOT_UNAVAILABLE");
           }
-          if (isRescheduling) {
-            dataToUpdate.date = nextDate;
-            dataToUpdate.startTime = nextStartTime;
-            dataToUpdate.endTime = minutesToTime(
-              timeToMinutes(nextStartTime) + existing.service.duration
-            );
+
+          dataToUpdate.date = nextDate;
+          dataToUpdate.startTime = nextStartTime;
+          dataToUpdate.endTime = minutesToTime(
+            timeToMinutes(nextStartTime) + existing.service.duration
+          );
+
+          const requiresDeposit = existing.service.requiresDeposit !== false;
+          dataToUpdate.status =
+            body.status && body.status !== "CANCELLED"
+              ? body.status
+              : requiresDeposit && existing.paymentStatus !== "SIGNAL_PAID"
+              ? "PENDING"
+              : "CONFIRMED";
+          if (
+            existing.paymentStatus !== "SIGNAL_PAID" &&
+            existing.paymentStatus !== "FULL_PAID"
+          ) {
+            dataToUpdate.paymentStatus = requiresDeposit
+              ? "PENDING_SIGNAL"
+              : "PAY_ON_SITE";
           }
-        }
+        } else {
+          // Fluxo normal para agendamentos ativos
+          const nextDate = body.date || existing.date;
+          const nextStartTime = body.startTime || existing.startTime;
+          const isRescheduling =
+            (body.date && body.date !== existing.date) ||
+            (body.startTime && body.startTime !== existing.startTime);
+          const isConfirming =
+            body.status === "CONFIRMED" || body.paymentStatus === "SIGNAL_PAID";
 
-        if (body.status !== undefined) {
-          dataToUpdate.status = body.status;
-        }
+          if (isRescheduling || isConfirming) {
+            await acquirePostgresBookingLock(tx, nextDate);
 
-        // Confirmação manual do sinal ou pagamento integral exclusivamente pela profissional
-        if (body.paymentStatus !== undefined) {
-          dataToUpdate.paymentStatus = body.paymentStatus;
-          if (body.paymentStatus === "SIGNAL_PAID") {
-            dataToUpdate.signalPaidAt = new Date();
-          } else if (body.paymentStatus === "FULL_PAID") {
-            dataToUpdate.fullPaidAt = new Date();
-            if (!existing.signalPaidAt) {
+            const available = await isTimeAvailable(
+              nextDate,
+              nextStartTime,
+              existing.service.duration,
+              existing.id,
+              tx,
+              isRescheduling
+                ? { allowPastToday: true }
+                : {
+                    allowPastToday: true,
+                    allowPastDates: true,
+                    ignoreWorkingHours: true,
+                  }
+            );
+            if (!available) {
+              throw new Error("SLOT_UNAVAILABLE");
+            }
+            if (isRescheduling) {
+              dataToUpdate.date = nextDate;
+              dataToUpdate.startTime = nextStartTime;
+              dataToUpdate.endTime = minutesToTime(
+                timeToMinutes(nextStartTime) + existing.service.duration
+              );
+            }
+          }
+
+          if (body.status !== undefined) {
+            dataToUpdate.status = body.status;
+            if (body.status === "CANCELLED") {
+              dataToUpdate.expiresAt = null;
+            }
+          }
+
+          // Confirmação manual do sinal ou pagamento integral exclusivamente pela profissional
+          if (body.paymentStatus !== undefined) {
+            dataToUpdate.paymentStatus = body.paymentStatus;
+            if (body.paymentStatus === "SIGNAL_PAID") {
               dataToUpdate.signalPaidAt = new Date();
+              dataToUpdate.expiresAt = null;
+            } else if (body.paymentStatus === "FULL_PAID") {
+              dataToUpdate.fullPaidAt = new Date();
+              dataToUpdate.expiresAt = null;
+              if (!existing.signalPaidAt) {
+                dataToUpdate.signalPaidAt = new Date();
+              }
             }
           }
         }
@@ -128,13 +170,59 @@ export async function PATCH(
           dataToUpdate.whatsappStatus = body.whatsappStatus;
         }
 
-        return await tx.appointment.update({
+        const updated = await tx.appointment.update({
           where: { id },
           data: dataToUpdate,
           include: { client: true, service: true },
         });
+
+        return { existing, updated };
       })
     );
+
+    const { existing, updated } = result;
+
+    // Disparar notificações administrativas quando houver cancelamento ou alteração importante
+    if (existing.status !== "CANCELLED" && updated.status === "CANCELLED") {
+      await emitAdminNotification({
+        type: "APPOINTMENT_CANCELLED",
+        title: "Agendamento cancelado",
+        body: `${updated.client.name} • ${
+          updated.service.name
+        } (${formatDateShortDdMm(updated.date)} às ${
+          updated.startTime
+        }) — horário liberado`,
+        appointmentId: updated.id,
+        clientName: updated.client.name,
+        serviceName: updated.service.name,
+        date: updated.date,
+        time: updated.startTime,
+        targetUrl: `/admin/agendamento?id=${updated.id}`,
+        dedupeKey: `cancel-${updated.id}-${updated.updatedAt.getTime()}`,
+      });
+    } else if (
+      existing.date !== updated.date ||
+      existing.startTime !== updated.startTime ||
+      body.reactivateCancelled === true
+    ) {
+      await emitAdminNotification({
+        type: "APPOINTMENT_UPDATED",
+        title:
+          body.reactivateCancelled === true
+            ? "Atendimento reagendado!"
+            : "Agendamento remarcado",
+        body: `${updated.client.name} • ${
+          updated.service.name
+        } para ${formatDateShortDdMm(updated.date)} às ${updated.startTime}`,
+        appointmentId: updated.id,
+        clientName: updated.client.name,
+        serviceName: updated.service.name,
+        date: updated.date,
+        time: updated.startTime,
+        targetUrl: `/admin/agendamento?id=${updated.id}`,
+        dedupeKey: `reschedule-${updated.id}-${updated.date}-${updated.startTime}`,
+      });
+    }
 
     return NextResponse.json(updated);
   } catch (error: unknown) {
@@ -147,6 +235,24 @@ export async function PATCH(
       return NextResponse.json(
         { error: "Agendamento não encontrado" },
         { status: 404 }
+      );
+    }
+    if (msg === "CANCELLED_CANNOT_CONFIRM") {
+      return NextResponse.json(
+        {
+          error:
+            "Não é permitido confirmar pagamento ou concluir um agendamento cancelado.",
+        },
+        { status: 400 }
+      );
+    }
+    if (msg === "CANCELLED_CANNOT_RESCHEDULE") {
+      return NextResponse.json(
+        {
+          error:
+            "Não é permitido remarcar diretamente um agendamento cancelado. Use a opção de reagendar atendimento cancelado.",
+        },
+        { status: 400 }
       );
     }
     if (msg === "SLOT_UNAVAILABLE" || prismaCode === "P2002") {

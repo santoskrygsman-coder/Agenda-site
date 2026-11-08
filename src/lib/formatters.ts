@@ -78,3 +78,47 @@ export function formatDateShortDdMm(dateStr: string): string {
   const [, m, d] = dateStr.split("-");
   return `${d}/${m}`;
 }
+
+/**
+ * Calcula o valor total, sinal e restante em centavos inteiros para evitar
+ * erros de arredondamento de ponto flutuante (IEEE 754).
+ */
+export function calculateSignalInCents(
+  priceReais: number,
+  requiresDeposit: boolean,
+  depositPercentage: number
+): {
+  totalAmount: number;
+  signalPercentage: number;
+  signalAmount: number;
+  remainingAmount: number;
+} {
+  const safePrice = Number.isFinite(Number(priceReais))
+    ? Math.max(0, Number(priceReais))
+    : 0;
+  const totalCents = Math.round(safePrice * 100);
+
+  if (!requiresDeposit) {
+    return {
+      totalAmount: totalCents / 100,
+      signalPercentage: 0,
+      signalAmount: 0,
+      remainingAmount: totalCents / 100,
+    };
+  }
+
+  const rawPct = Number(depositPercentage);
+  const pct = Number.isFinite(rawPct)
+    ? Math.min(100, Math.max(1, Math.round(rawPct)))
+    : 50;
+
+  const signalCents = Math.round((totalCents * pct) / 100);
+  const remainingCents = Math.max(0, totalCents - signalCents);
+
+  return {
+    totalAmount: totalCents / 100,
+    signalPercentage: pct,
+    signalAmount: signalCents / 100,
+    remainingAmount: remainingCents / 100,
+  };
+}

@@ -1,11 +1,13 @@
 {
-  "name": "Agendamento Estética",
-  "short_name": "Agendamento",
-  "description": "Sistema de agendamento para estética",
-  "start_url": "/admin",
+  "name": "Emile Lash Designer — Painel & Agenda",
+  "short_name": "Emile Lash",
+  "description": "Sistema de agendamento e painel administrativo Emile Lash Designer",
+  "start_url": "/admin/agenda",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#FCFAFA",
-  "theme_color": "#B98389",
+  "background_color": "#F4EAE3",
+  "theme_color": "#B87472",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "/icon-192.png",

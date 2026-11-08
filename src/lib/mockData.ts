@@ -21,9 +21,15 @@ export interface AppointmentItem {
   clientPhone: string;
   serviceId: string;
   serviceName: string;
+  price?: number;
   priceFormatted: string;
+  signalPercentage?: number;
+  signalAmount?: number;
+  signalFormatted?: string;
+  remainingAmount?: number;
+  remainingFormatted?: string;
   dateFormatted: string;
-  status: "concluido" | "confirmado" | "aguardando" | "agendado";
+  status: "concluido" | "confirmado" | "aguardando" | "agendado" | "cancelado";
   statusLabel: string;
   notes?: string;
   dbStatus?: string;

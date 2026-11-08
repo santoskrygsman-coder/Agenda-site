@@ -78,12 +78,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const rawDepositPct =
-      body.depositPercentage !== undefined ? Number(body.depositPercentage) : 50;
-    const depositPercentage =
-      !isNaN(rawDepositPct) && rawDepositPct >= 1 && rawDepositPct <= 100
-        ? Math.round(rawDepositPct)
-        : 50;
+    let depositPercentage = 50;
+    if (body.depositPercentage !== undefined && body.depositPercentage !== null && body.depositPercentage !== "") {
+      const rawDepositPct = Number(body.depositPercentage);
+      if (!Number.isFinite(rawDepositPct) || rawDepositPct < 1 || rawDepositPct > 100) {
+        return NextResponse.json(
+          { error: "O percentual do sinal deve estar entre 1% e 100%." },
+          { status: 400 }
+        );
+      }
+      depositPercentage = Math.round(rawDepositPct);
+    }
 
     const allExisting = await getCachedAllServices();
     const created = await prisma.service.create({

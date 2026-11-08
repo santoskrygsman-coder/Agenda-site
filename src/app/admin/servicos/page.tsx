@@ -6,6 +6,7 @@ import {
   X,
   Trash2,
   Camera,
+  Image as ImageIcon,
   ClipboardPaste,
   Search,
   Sparkles,
@@ -21,6 +22,7 @@ import ServiceCard, {
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import { useBooking } from "@/context/BookingContext";
 import { ServiceItem } from "@/lib/mockData";
+import { calculateSignalInCents } from "@/lib/formatters";
 
 const IMAGE_OPTIONS = [
   { label: "Catálogo: Extensão Clássica (HD)", value: "/images/service-classica.png" },
@@ -32,18 +34,34 @@ const IMAGE_OPTIONS = [
 ];
 
 const DEPOSIT_PRESETS = [20, 30, 40, 50, 100];
+const ALLOWED_MIME_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
 
-async function compressPhotoToHdDataUrl(file: File | Blob): Promise<string> {
+async function preparePhotoDataUrl(file: File | Blob): Promise<string> {
+  const mime = (file.type || "image/jpeg").toLowerCase();
+  const outputMime =
+    mime === "image/png"
+      ? "image/png"
+      : mime === "image/webp"
+      ? "image/webp"
+      : "image/jpeg";
+
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error("Falha ao ler imagem"));
     reader.onload = () => {
       const rawDataUrl = String(reader.result || "");
+      // Preserva arquivos menores que 1.5 MB sem recompressão desnecessária
+      if (file.size <= 1.5 * 1024 * 1024 && rawDataUrl.startsWith("data:image/")) {
+        resolve(rawDataUrl);
+        return;
+      }
+
       const img = new Image();
       img.onerror = () => resolve(rawDataUrl);
       img.onload = () => {
         try {
-          const maxDim = 1280;
+          const maxDim = 1400;
           let width = img.naturalWidth || img.width || 800;
           let height = img.naturalHeight || img.height || 800;
           if (width > maxDim || height > maxDim) {
@@ -64,7 +82,10 @@ async function compressPhotoToHdDataUrl(file: File | Blob): Promise<string> {
             return;
           }
           ctx.drawImage(img, 0, 0, width, height);
-          const compressed = canvas.toDataURL("image/jpeg", 0.84);
+          const compressed =
+            outputMime === "image/png"
+              ? canvas.toDataURL("image/png")
+              : canvas.toDataURL(outputMime, 0.86);
           resolve(compressed);
         } catch {
           resolve(rawDataUrl);
@@ -86,6 +107,8 @@ export default function AdminServicesPage() {
   } = useBooking();
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const unsavedUploadedUrlRef = useRef<string | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<ServiceItem | null>(
@@ -112,7 +135,25 @@ export default function AdminServicesPage() {
   const [previewZoomOpen, setPreviewZoomOpen] = useState(false);
   const [previewMagnified, setPreviewMagnified] = useState(false);
 
+  const cleanupUnsavedUploadIfNeeded = async () => {
+    const tempUrl = unsavedUploadedUrlRef.current;
+    unsavedUploadedUrlRef.current = null;
+    if (tempUrl) {
+      await fetch("/api/upload", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: tempUrl }),
+      }).catch(() => {});
+    }
+  };
+
+  const closeModal = () => {
+    void cleanupUnsavedUploadIfNeeded();
+    setModalOpen(false);
+  };
+
   const openNewModal = () => {
+    unsavedUploadedUrlRef.current = null;
     setEditingService(null);
     setName("");
     setDescription("");
@@ -127,6 +168,7 @@ export default function AdminServicesPage() {
   };
 
   const openEditModal = (svc: ServiceItem) => {
+    unsavedUploadedUrlRef.current = null;
     setEditingService(svc);
     setName(svc.name);
     setDescription(svc.description || "");
@@ -141,41 +183,45 @@ export default function AdminServicesPage() {
   };
 
   const uploadRealPhotoBlob = async (file: File | Blob) => {
-    setUploadingPhoto(true);
     setErrorMsg("");
     setUploadSuccess("");
 
+    const rawMime = (file.type || "").toLowerCase();
+    if (rawMime && !ALLOWED_MIME_TYPES.includes(rawMime)) {
+      setErrorMsg("Formato inválido. Selecione uma foto JPG, PNG ou WebP.");
+      return;
+    }
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setErrorMsg("A foto selecionada excede o limite máximo de 10 MB.");
+      return;
+    }
+
+    setUploadingPhoto(true);
     try {
-      const optimizedDataUrl = await compressPhotoToHdDataUrl(file);
+      const optimizedDataUrl = await preparePhotoDataUrl(file);
 
       const res = await fetch("/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dataUrl: optimizedDataUrl }),
+        body: JSON.stringify({
+          dataUrl: optimizedDataUrl,
+          previousUrl: unsavedUploadedUrlRef.current,
+        }),
       });
 
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.url) {
+        unsavedUploadedUrlRef.current = data.url;
         setImage(data.url);
-        setUploadSuccess("Foto personalizada em HD carregada!");
-      } else if (optimizedDataUrl.startsWith("data:image/")) {
-        setImage(optimizedDataUrl);
-        setUploadSuccess("Foto personalizada em HD carregada!");
+        setUploadSuccess(
+          "Foto personalizada enviada! Toque em 'Salvar serviço' para concluir."
+        );
       } else {
-        setErrorMsg(data.error || "Não foi possível carregar a foto.");
+        setErrorMsg(data.error || "Não foi possível enviar a foto para o servidor.");
       }
     } catch {
-      try {
-        const fallbackDataUrl = await compressPhotoToHdDataUrl(file);
-        if (fallbackDataUrl.startsWith("data:image/")) {
-          setImage(fallbackDataUrl);
-          setUploadSuccess("Foto personalizada em HD carregada!");
-        } else {
-          setErrorMsg("Erro ao processar a fotografia selecionada.");
-        }
-      } catch {
-        setErrorMsg("Erro ao carregar a fotografia selecionada.");
-      }
+      setErrorMsg("Erro de conexão ao enviar a fotografia. Tente novamente.");
     } finally {
       setUploadingPhoto(false);
     }
@@ -186,6 +232,16 @@ export default function AdminServicesPage() {
     if (!file) return;
     await uploadRealPhotoBlob(file);
     e.target.value = "";
+  };
+
+  const handleRemoveCustomPhoto = async () => {
+    setErrorMsg("");
+    setUploadSuccess("");
+    await cleanupUnsavedUploadIfNeeded();
+    setImage("/images/service-classica.png");
+    setUploadSuccess(
+      "Foto personalizada removida. Toque em 'Salvar serviço' para confirmar."
+    );
   };
 
   const handlePastePhoto = async () => {
@@ -221,23 +277,35 @@ export default function AdminServicesPage() {
     setErrorMsg("");
     const parsedPrice = Number(String(price).replace(",", "."));
     const parsedDuration = Number(durationMinutes);
-    const parsedDepositPct = Math.min(
-      100,
-      Math.max(1, Math.round(Number(depositPercentage) || 50))
-    );
+    const rawPct = Number(String(depositPercentage).replace(",", "."));
 
     if (!name.trim()) {
       setErrorMsg("Informe o nome do serviço.");
       return;
     }
-    if (isNaN(parsedPrice) || parsedPrice < 0) {
+    if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
       setErrorMsg("Informe um preço válido.");
       return;
     }
-    if (isNaN(parsedDuration) || parsedDuration < 15) {
+    if (!Number.isFinite(parsedDuration) || parsedDuration < 15) {
       setErrorMsg("A duração mínima é de 15 minutos.");
       return;
     }
+    if (requiresDeposit) {
+      if (
+        String(depositPercentage).trim() === "" ||
+        !Number.isFinite(rawPct) ||
+        rawPct < 1 ||
+        rawPct > 100
+      ) {
+        setErrorMsg("O percentual do sinal deve estar entre 1% e 100%.");
+        return;
+      }
+    }
+
+    const parsedDepositPct = requiresDeposit
+      ? Math.round(rawPct)
+      : Math.min(100, Math.max(1, Math.round(rawPct || 50)));
 
     setSaving(true);
     const res = await createOrUpdateService({
@@ -256,6 +324,7 @@ export default function AdminServicesPage() {
     if (!res.ok) {
       setErrorMsg(res.error || "Não foi possível salvar o serviço.");
     } else {
+      unsavedUploadedUrlRef.current = null;
       setModalOpen(false);
       setFeedbackMsg(
         editingService
@@ -274,6 +343,7 @@ export default function AdminServicesPage() {
     if (!res.ok) {
       setErrorMsg(res.error || "Não foi possível excluir.");
     } else {
+      await cleanupUnsavedUploadIfNeeded();
       setModalOpen(false);
       setFeedbackMsg("Serviço excluído com sucesso!");
       setTimeout(() => setFeedbackMsg(""), 2500);
@@ -295,7 +365,7 @@ export default function AdminServicesPage() {
 
       <div className="px-4 pt-1 pb-5 flex-1 flex flex-col">
         <p className="text-[11.5px] text-[#6E5850] px-1 mb-2">
-          Toque em um serviço para editar preço, duração ou enviar uma{" "}
+          Toque em um serviço para editar preço, duração, sinal Pix ou enviar uma{" "}
           <strong className="text-[#2D1C18]">foto real em alta definição</strong>{" "}
           para a lupa da cliente.
         </p>
@@ -339,7 +409,7 @@ export default function AdminServicesPage() {
               </h2>
               <button
                 type="button"
-                onClick={() => setModalOpen(false)}
+                onClick={closeModal}
                 aria-label="Fechar modal"
                 className="w-10 h-10 rounded-full bg-[#EADCD3] flex items-center justify-center text-[#2D1C18] active:scale-95 transition touch-manipulation"
               >
@@ -464,7 +534,7 @@ export default function AdminServicesPage() {
                   <div className="pt-2.5 border-t border-[#EAE0D8] space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <label className="text-[12px] font-semibold text-[#4E3B35]">
-                        Porcentagem do sinal (%)
+                        Porcentagem do sinal (1% a 100%)
                       </label>
                       <div className="flex items-center gap-1 bg-[#FFFDFB] border border-[#DFCFC5] rounded-[10px] px-2.5 py-1">
                         <input
@@ -472,6 +542,7 @@ export default function AdminServicesPage() {
                           inputMode="numeric"
                           min="1"
                           max="100"
+                          step="1"
                           value={depositPercentage}
                           onChange={(e) => setDepositPercentage(e.target.value)}
                           className="w-12 text-right text-[13.5px] font-bold text-[#2D1C18] bg-transparent focus:outline-none"
@@ -505,38 +576,63 @@ export default function AdminServicesPage() {
                     {(() => {
                       const numPrice =
                         Number(String(price).replace(",", ".")) || 0;
-                      const numPct = Math.min(
-                        100,
-                        Math.max(1, Number(depositPercentage) || 50)
+                      const rawPct = Number(
+                        String(depositPercentage).replace(",", ".")
                       );
-                      const calcSignal = Number(
-                        ((numPrice * numPct) / 100).toFixed(2)
+                      const isPctValid =
+                        String(depositPercentage).trim() !== "" &&
+                        Number.isFinite(rawPct) &&
+                        rawPct >= 1 &&
+                        rawPct <= 100;
+
+                      if (!isPctValid) {
+                        return (
+                          <div className="bg-[#F3D8D8] border border-[#E2B5B5] rounded-[10px] px-3 py-2 text-[11.5px] font-semibold text-[#B84A48]">
+                            Informe um percentual válido entre 1% e 100%.
+                          </div>
+                        );
+                      }
+
+                      const calc = calculateSignalInCents(
+                        numPrice,
+                        true,
+                        rawPct
                       );
-                      const calcRest = Number(
-                        Math.max(0, numPrice - calcSignal).toFixed(2)
-                      );
+
                       return (
-                        <div className="bg-[#F4E3DC]/80 border border-[#E5CEC4] rounded-[10px] px-3 py-2 flex items-center justify-between text-[11.5px] text-[#2D1C18]">
-                          <span>
-                            Sinal ({numPct}%):{" "}
+                        <div className="bg-[#F4E3DC]/80 border border-[#E5CEC4] rounded-[10px] px-3 py-2 space-y-1 text-[11.5px] text-[#2D1C18]">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[#5C4740]">Valor total:</span>
                             <strong>
                               R${" "}
-                              {calcSignal.toLocaleString("pt-BR", {
+                              {calc.totalAmount.toLocaleString("pt-BR", {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                               })}
                             </strong>
-                          </span>
-                          <span className="text-[#5C4740]">
-                            No dia:{" "}
-                            <strong className="text-[#2D1C18]">
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span>Sinal Pix ({calc.signalPercentage}%):</span>
+                            <strong className="text-[#9E5856]">
                               R${" "}
-                              {calcRest.toLocaleString("pt-BR", {
+                              {calc.signalAmount.toLocaleString("pt-BR", {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                               })}
                             </strong>
-                          </span>
+                          </div>
+                          <div className="flex items-center justify-between pt-0.5 border-t border-[#E5CEC4]/70">
+                            <span className="text-[#5C4740]">
+                              Restante no atendimento:
+                            </span>
+                            <strong>
+                              R${" "}
+                              {calc.remainingAmount.toLocaleString("pt-BR", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </strong>
+                          </div>
                         </div>
                       );
                     })()}
@@ -565,7 +661,7 @@ export default function AdminServicesPage() {
                 </div>
 
                 {/* Prévia da Foto que aparece na Lupa */}
-                <div className="relative w-full h-[130px] rounded-[12px] overflow-hidden bg-[#EAD8CE] border border-[#DFCFC5]">
+                <div className="relative w-full h-[135px] rounded-[12px] overflow-hidden bg-[#EAD8CE] border border-[#DFCFC5]">
                   <img
                     src={currentHdPreview}
                     alt="Prévia em alta definição"
@@ -578,36 +674,57 @@ export default function AdminServicesPage() {
                     <Sparkles size={10} className="text-[#E2B897]" />
                     <span>
                       {isCustomUploadedPhoto
-                        ? "Foto Real Enviada (HD)"
+                        ? "Foto Personalizada (HD)"
                         : "Foto HD do Catálogo"}
                     </span>
                   </div>
+                  {isCustomUploadedPhoto && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveCustomPhoto}
+                      className="absolute top-2 right-2 bg-[#2D1C18]/85 hover:bg-[#B84A48] text-[#FAF5F1] text-[10.5px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 transition touch-manipulation"
+                    >
+                      <Trash2 size={11} />
+                      <span>Remover foto</span>
+                    </button>
+                  )}
                 </div>
 
                 {uploadSuccess && (
                   <p className="text-[11.5px] font-semibold text-[#2E8540] flex items-center gap-1">
-                    <Check size={13} />
+                    <Check size={13} className="shrink-0" />
                     <span>{uploadSuccess}</span>
                   </p>
                 )}
 
+                {/* Input Galeria (JPG, PNG, WebP) */}
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   onChange={handleFileChange}
                   className="hidden"
                 />
 
-                {/* Botões para Enviar Foto Real do Celular/Computador ou Colar */}
-                <div className="grid grid-cols-2 gap-2">
+                {/* Input Câmera Direta (quando suportado no celular) */}
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  capture="environment"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+
+                {/* Botões para Galeria, Câmera ou Colar */}
+                <div className="grid grid-cols-3 gap-1.5">
                   <button
                     type="button"
                     disabled={uploadingPhoto}
                     onClick={() => fileInputRef.current?.click()}
-                    className="min-h-[42px] bg-[#38231E] hover:bg-[#2D1C18] active:scale-[0.98] text-[#FAF3EE] rounded-[11px] py-2 px-2.5 text-[12px] font-semibold flex items-center justify-center gap-1.5 transition touch-manipulation"
+                    className="min-h-[42px] bg-[#38231E] hover:bg-[#2D1C18] active:scale-[0.98] text-[#FAF3EE] rounded-[11px] py-2 px-2 text-[11.5px] font-semibold flex items-center justify-center gap-1 transition touch-manipulation"
                   >
-                    <Camera size={14} className="shrink-0" />
+                    <ImageIcon size={13} className="shrink-0" />
                     <span>
                       {uploadingPhoto ? "Enviando..." : "Enviar foto real"}
                     </span>
@@ -616,10 +733,20 @@ export default function AdminServicesPage() {
                   <button
                     type="button"
                     disabled={uploadingPhoto}
-                    onClick={handlePastePhoto}
-                    className="min-h-[42px] bg-[#FFFDFB] hover:bg-[#F3E8E0] active:scale-[0.98] border border-[#D8C6BC] text-[#2D1C18] rounded-[11px] py-2 px-2.5 text-[12px] font-semibold flex items-center justify-center gap-1.5 transition touch-manipulation"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="min-h-[42px] bg-[#FFFDFB] hover:bg-[#F3E8E0] active:scale-[0.98] border border-[#D8C6BC] text-[#2D1C18] rounded-[11px] py-2 px-2 text-[11.5px] font-semibold flex items-center justify-center gap-1 transition touch-manipulation"
                   >
-                    <ClipboardPaste size={14} className="text-[#6E5850] shrink-0" />
+                    <Camera size={13} className="text-[#B87472] shrink-0" />
+                    <span>Câmera</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={uploadingPhoto}
+                    onClick={handlePastePhoto}
+                    className="min-h-[42px] bg-[#FFFDFB] hover:bg-[#F3E8E0] active:scale-[0.98] border border-[#D8C6BC] text-[#2D1C18] rounded-[11px] py-2 px-2 text-[11.5px] font-semibold flex items-center justify-center gap-1 transition touch-manipulation"
+                  >
+                    <ClipboardPaste size={13} className="text-[#6E5850] shrink-0" />
                     <span>Colar foto</span>
                   </button>
                 </div>
@@ -633,6 +760,7 @@ export default function AdminServicesPage() {
                     value={isCustomUploadedPhoto ? "__custom__" : image}
                     onChange={(e) => {
                       if (e.target.value !== "__custom__") {
+                        void cleanupUnsavedUploadIfNeeded();
                         setImage(e.target.value);
                         setUploadSuccess("");
                       }
@@ -665,7 +793,12 @@ export default function AdminServicesPage() {
                     <Trash2 size={18} />
                   </button>
                 )}
-                <PrimaryButton type="submit" variant="rose" className="flex-1" disabled={saving}>
+                <PrimaryButton
+                  type="submit"
+                  variant="rose"
+                  className="flex-1"
+                  disabled={saving || uploadingPhoto}
+                >
                   {saving ? "Salvando..." : "Salvar serviço"}
                 </PrimaryButton>
               </div>

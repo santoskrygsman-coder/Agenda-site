@@ -10,6 +10,8 @@ import {
   X,
   FileCheck2,
   AlertCircle,
+  Ban,
+  RotateCcw,
 } from "lucide-react";
 import MobileContainer from "@/components/ui/MobileContainer";
 import PageHeader from "@/components/ui/PageHeader";
@@ -35,28 +37,34 @@ function AppointmentDetailsContent() {
   const [errorMsg, setErrorMsg] = useState("");
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
-  // Modal de remarcação
+  // Modal de remarcação / reativação
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [reactivatingCancelled, setReactivatingCancelled] = useState(false);
   const [newDate, setNewDate] = useState(() => getDefaultBookingDate().iso);
   const [newTime, setNewTime] = useState("14:00");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+
+  const reloadAppointmentById = async (targetId: string) => {
+    const res = await fetch(
+      `/api/appointments?id=${encodeURIComponent(targetId)}`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return;
+    const list = await res.json();
+    if (Array.isArray(list) && list.length > 0) {
+      setSelectedAppointment(list[0]);
+    }
+  };
 
   useEffect(() => {
     const fetchLatest = async () => {
       const targetId = queryId || selectedAppointment?.id;
       if (targetId) {
-        const res = await fetch(
-          `/api/appointments?id=${encodeURIComponent(targetId)}`
-        );
-        if (!res.ok) return;
-        const list = await res.json();
-        if (Array.isArray(list) && list.length > 0) {
-          setSelectedAppointment(list[0]);
-        }
+        await reloadAppointmentById(targetId);
         return;
       }
 
-      const res = await fetch("/api/appointments");
+      const res = await fetch("/api/appointments", { cache: "no-store" });
       if (!res.ok) return;
       const list = await res.json();
       if (Array.isArray(list) && list.length > 0) {
@@ -71,7 +79,9 @@ function AppointmentDetailsContent() {
 
   useEffect(() => {
     if (!rescheduleOpen || !appt) return;
-    const rawDate = appt.date || "2025-03-14";
+    const todayIso = getTodayLocalIso();
+    const rawDate =
+      appt.date && appt.date >= todayIso ? appt.date : getDefaultBookingDate().iso;
     setNewDate(rawDate);
     setNewTime(appt.time);
   }, [rescheduleOpen, appt]);
@@ -79,15 +89,20 @@ function AppointmentDetailsContent() {
   useEffect(() => {
     if (!rescheduleOpen || !appt) return;
     fetch(
-      `/api/availability?date=${newDate}&serviceId=${appt.serviceId}&excludeAppointmentId=${appt.id}`
+      `/api/availability?date=${newDate}&serviceId=${appt.serviceId}&excludeAppointmentId=${appt.id}`,
+      { cache: "no-store" }
     )
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data && Array.isArray(data.times)) {
           setAvailableSlots(data.times);
+          if (data.times.length > 0 && !data.times.includes(newTime)) {
+            setNewTime(data.times[0]);
+          }
         }
       })
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rescheduleOpen, newDate, appt]);
 
   const handleConfirmManual = async () => {
@@ -105,15 +120,13 @@ function AppointmentDetailsContent() {
     setLoading(false);
 
     if (res.ok) {
-      setSelectedAppointment({
-        ...appt,
-        status: "confirmado",
-        statusLabel: "Sinal confirmado",
-      });
-      setFeedback("Status alterado para 'Sinal confirmado' manualmente pela profissional!");
+      await reloadAppointmentById(appt.id);
+      setFeedback(
+        "Status alterado para 'Sinal confirmado' manualmente pela profissional!"
+      );
       setTimeout(() => setFeedback(""), 3000);
     } else {
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       setErrorMsg(data.error || "Erro ao confirmar agendamento.");
     }
   };
@@ -134,13 +147,16 @@ function AppointmentDetailsContent() {
     if (res.ok) {
       setSelectedAppointment({
         ...appt,
-        status: "agendado",
+        dbStatus: "CANCELLED",
+        status: "cancelado",
         statusLabel: "Cancelado",
+        expiresAt: null,
       });
-      setFeedback("Agendamento cancelado e horário liberado na agenda.");
-      setTimeout(() => setFeedback(""), 3000);
+      await reloadAppointmentById(appt.id);
+      setFeedback("Agendamento cancelado e horário liberado imediatamente na agenda.");
+      setTimeout(() => setFeedback(""), 3500);
     } else {
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       setErrorMsg(data.error || "Erro ao cancelar agendamento.");
     }
   };
@@ -160,18 +176,14 @@ function AppointmentDetailsContent() {
     setLoading(false);
 
     if (res.ok) {
-      setSelectedAppointment({
-        ...appt,
-        status: "concluido",
-        statusLabel: "Concluído",
-      });
+      await reloadAppointmentById(appt.id);
       setMoreMenuOpen(false);
       setFeedback(
         "Atendimento concluído e pagamento integral (100%) registrado no financeiro!"
       );
       setTimeout(() => setFeedback(""), 3500);
     } else {
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       setErrorMsg(data.error || "Erro ao concluir atendimento.");
     }
   };
@@ -209,9 +221,10 @@ function AppointmentDetailsContent() {
       body: JSON.stringify({
         date: newDate,
         startTime: newTime,
+        ...(reactivatingCancelled ? { reactivateCancelled: true } : {}),
       }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     setLoading(false);
 
     if (!res.ok) {
@@ -220,7 +233,14 @@ function AppointmentDetailsContent() {
     }
 
     setRescheduleOpen(false);
-    router.push("/admin/agenda");
+    setReactivatingCancelled(false);
+    await reloadAppointmentById(appt.id);
+    setFeedback(
+      reactivatingCancelled
+        ? "Atendimento reagendado e reativado com sucesso!"
+        : "Horário do agendamento atualizado com sucesso!"
+    );
+    setTimeout(() => setFeedback(""), 3000);
   };
 
   if (!appt) {
@@ -247,13 +267,19 @@ function AppointmentDetailsContent() {
     );
   }
 
+  const isCancelled =
+    appt.dbStatus === "CANCELLED" ||
+    appt.status === "cancelado" ||
+    appt.statusLabel === "Cancelado";
+  const isCompleted =
+    appt.dbStatus === "COMPLETED" || appt.status === "concluido";
+
   const rawDate = appt.date || "2025-03-14";
-  const dbStatus =
-    appt.status === "confirmado"
-      ? "CONFIRMED"
-      : appt.statusLabel === "Cancelado"
-      ? "CANCELLED"
-      : "PENDING";
+  const dbStatus = isCancelled
+    ? "CANCELLED"
+    : appt.status === "confirmado" || isCompleted
+    ? "CONFIRMED"
+    : "PENDING";
 
   const waUrl = buildProfessionalToClientWhatsAppUrl({
     clientPhone: appt.clientPhone,
@@ -267,7 +293,7 @@ function AppointmentDetailsContent() {
   const bookingOrigin =
     typeof window !== "undefined"
       ? `${window.location.origin}/servicos`
-      : "https://agendamento-estetica.local/servicos";
+      : "https://emile-lash-designer.netlify.app/servicos";
 
   const expiredWaUrl = buildExpiredAppointmentWhatsAppUrl({
     clientPhone: appt.clientPhone,
@@ -290,13 +316,15 @@ function AppointmentDetailsContent() {
 
       {moreMenuOpen && (
         <div className="mx-4 min-[375px]:mx-5 mb-2 bg-[#FAF5F1] border border-[#E5D4C9] rounded-[14px] p-2 shadow-lg space-y-1">
-          <button
-            type="button"
-            onClick={handleCompleteFullPayment}
-            className="w-full min-h-[44px] text-left px-3.5 py-2.5 rounded-[10px] text-[13px] font-semibold text-[#2E8540] hover:bg-[#D8EFDC]/60 active:scale-[0.99] transition touch-manipulation"
-          >
-            ✓ Concluir atendimento (Receber 100%)
-          </button>
+          {!isCancelled && !isCompleted && (
+            <button
+              type="button"
+              onClick={handleCompleteFullPayment}
+              className="w-full min-h-[44px] text-left px-3.5 py-2.5 rounded-[10px] text-[13px] font-semibold text-[#2E8540] hover:bg-[#D8EFDC]/60 active:scale-[0.99] transition touch-manipulation"
+            >
+              ✓ Concluir atendimento (Receber 100%)
+            </button>
+          )}
           <button
             type="button"
             onClick={handleDeletePermanent}
@@ -312,8 +340,8 @@ function AppointmentDetailsContent() {
           {/* Top Centered Status Pill */}
           <div className="flex justify-center my-2">
             <StatusBadge
-              status={appt.status}
-              label={appt.statusLabel}
+              status={isCancelled ? "cancelado" : appt.status}
+              label={isCancelled ? "Cancelado" : appt.statusLabel}
               size="md"
             />
           </div>
@@ -371,30 +399,67 @@ function AppointmentDetailsContent() {
 
             <div className="py-3 flex items-start gap-3.5 text-[13.5px] text-[#2D1C18]">
               <Wallet size={18} className="text-[#4E3B35] shrink-0 mt-1" />
-              <div>
+              <div className="flex-1">
                 <p className="font-semibold text-[14px]">{appt.serviceName}</p>
-                <p className="font-bold text-[15px] mt-1">
-                  {appt.priceFormatted}
+                <p className="font-bold text-[15px] mt-0.5">
+                  Valor total: {appt.priceFormatted}
                 </p>
+                {typeof appt.signalAmount === "number" &&
+                  appt.signalAmount > 0 && (
+                    <div className="mt-1 text-[12px] text-[#5C4841] flex flex-wrap gap-x-3 gap-y-0.5">
+                      <span>
+                        Sinal ({appt.signalPercentage ?? 50}%):{" "}
+                        <strong className="text-[#2D1C18]">
+                          {appt.signalFormatted}
+                        </strong>
+                      </span>
+                      {appt.remainingFormatted && (
+                        <span>
+                          Restante:{" "}
+                          <strong className="text-[#2D1C18]">
+                            {appt.remainingFormatted}
+                          </strong>
+                        </span>
+                      )}
+                    </div>
+                  )}
               </div>
             </div>
           </div>
 
-          {/* Card de Status do Sinal (Confirmação exclusiva via WhatsApp pela profissional) */}
-          <div className="mt-3.5 bg-[#FAF5F1] border border-[#E7DAD1] rounded-[16px] p-3.5">
+          {/* Card de Status do Sinal / Cancelamento */}
+          <div
+            className={`mt-3.5 rounded-[16px] p-3.5 border ${
+              isCancelled
+                ? "bg-[#F9EBEB] border-[#E5C2C2]"
+                : "bg-[#FAF5F1] border-[#E7DAD1]"
+            }`}
+          >
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {appt.status === "confirmado" || appt.status === "concluido" ? (
-                  <FileCheck2 size={17} className="text-[#2E8540] shrink-0" />
+              <div className="flex items-start gap-2.5">
+                {isCancelled ? (
+                  <Ban size={17} className="text-[#B84A48] shrink-0 mt-0.5" />
+                ) : appt.status === "confirmado" || isCompleted ? (
+                  <FileCheck2
+                    size={17}
+                    className="text-[#2E8540] shrink-0 mt-0.5"
+                  />
                 ) : (
-                  <AlertCircle size={17} className="text-[#B87472] shrink-0" />
+                  <AlertCircle
+                    size={17}
+                    className="text-[#B87472] shrink-0 mt-0.5"
+                  />
                 )}
                 <div>
                   <h3 className="text-[13px] font-bold text-[#2D1C18]">
-                    Comprovante do Sinal (via WhatsApp)
+                    {isCancelled
+                      ? "Atendimento Cancelado"
+                      : "Comprovante do Sinal (via WhatsApp)"}
                   </h3>
-                  <p className="text-[11.5px] text-[#5C4841]">
-                    {appt.status === "confirmado" || appt.status === "concluido"
+                  <p className="text-[11.5px] text-[#5C4841] mt-0.5 leading-snug">
+                    {isCancelled
+                      ? "Atendimento cancelado — confirmação de sinal encerrada e horário liberado na agenda para novas clientes."
+                      : appt.status === "confirmado" || isCompleted
                       ? "Sinal confirmado manualmente pela profissional"
                       : appt.receiptReportedAt
                       ? "Aguardando confirmação • Cliente abriu o WhatsApp para enviar o comprovante"
@@ -405,63 +470,99 @@ function AppointmentDetailsContent() {
             </div>
           </div>
 
-          {/* 3 Action Buttons */}
+          {/* Action Buttons */}
           <div className="mt-3.5 space-y-2.5">
-            {appt.status === "confirmado" ? (
-              <PrimaryButton
-                variant="confirm"
-                disabled={loading}
-                onClick={handleCompleteFullPayment}
-              >
-                {loading
-                  ? "Processando..."
-                  : "Concluir atendimento (Receber restante)"}
-              </PrimaryButton>
+            {isCancelled ? (
+              <>
+                <PrimaryButton
+                  variant="neutral"
+                  disabled={loading}
+                  leftIcon={<RotateCcw size={16} />}
+                  onClick={() => {
+                    setErrorMsg("");
+                    setReactivatingCancelled(true);
+                    setRescheduleOpen(true);
+                  }}
+                >
+                  Reagendar atendimento cancelado
+                </PrimaryButton>
+
+                <a
+                  href={expiredWaUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full min-h-[46px] bg-[#F5E6DF] hover:bg-[#EDD8CE] active:scale-[0.99] border border-[#E2C8BE] text-[#4A3630] rounded-[14px] py-3 px-3.5 flex items-center justify-center gap-2 text-[12.5px] font-semibold transition touch-manipulation text-center"
+                >
+                  <WhatsAppCircleIcon size={17} variant="green" />
+                  <span>
+                    Avisar cliente que o horário foi liberado (falta de sinal)
+                  </span>
+                </a>
+              </>
             ) : (
-              <PrimaryButton
-                variant="confirm"
-                disabled={loading}
-                onClick={handleConfirmManual}
-              >
-                {loading
-                  ? "Processando..."
-                  : "Confirmar sinal (Sinal confirmado)"}
-              </PrimaryButton>
+              <>
+                {!isCompleted &&
+                  (appt.status === "confirmado" ? (
+                    <PrimaryButton
+                      variant="confirm"
+                      disabled={loading}
+                      onClick={handleCompleteFullPayment}
+                    >
+                      {loading
+                        ? "Processando..."
+                        : "Concluir atendimento (Receber restante)"}
+                    </PrimaryButton>
+                  ) : (
+                    <PrimaryButton
+                      variant="confirm"
+                      disabled={loading}
+                      onClick={handleConfirmManual}
+                    >
+                      {loading
+                        ? "Processando..."
+                        : "Confirmar sinal (Sinal confirmado)"}
+                    </PrimaryButton>
+                  ))}
+
+                {!isCompleted && (
+                  <PrimaryButton
+                    variant="neutral"
+                    disabled={loading}
+                    onClick={() => {
+                      setErrorMsg("");
+                      setReactivatingCancelled(false);
+                      setRescheduleOpen(true);
+                    }}
+                  >
+                    Remarcar
+                  </PrimaryButton>
+                )}
+
+                {!isCompleted && (
+                  <PrimaryButton
+                    variant="danger-soft"
+                    disabled={loading}
+                    onClick={handleCancel}
+                  >
+                    Cancelar
+                  </PrimaryButton>
+                )}
+
+                {appt.status === "aguardando" && (
+                  <a
+                    href={expiredWaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full min-h-[46px] bg-[#F5E6DF] hover:bg-[#EDD8CE] active:scale-[0.99] border border-[#E2C8BE] text-[#4A3630] rounded-[14px] py-3 px-3.5 flex items-center justify-center gap-2 text-[12.5px] font-semibold transition touch-manipulation text-center"
+                  >
+                    <WhatsAppCircleIcon size={17} variant="green" />
+                    <span>
+                      Avisar cliente que o horário foi liberado (falta de sinal)
+                    </span>
+                  </a>
+                )}
+              </>
             )}
-
-            <PrimaryButton
-              variant="neutral"
-              disabled={loading}
-              onClick={() => {
-                setErrorMsg("");
-                setRescheduleOpen(true);
-              }}
-            >
-              Remarcar
-            </PrimaryButton>
-
-            <PrimaryButton
-              variant="danger-soft"
-              disabled={loading}
-              onClick={handleCancel}
-            >
-              Cancelar
-            </PrimaryButton>
-
-            {appt.statusLabel === "Cancelado" ||
-            appt.status === "aguardando" ? (
-              <a
-                href={expiredWaUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full min-h-[46px] bg-[#F5E6DF] hover:bg-[#EDD8CE] active:scale-[0.99] border border-[#E2C8BE] text-[#4A3630] rounded-[14px] py-3 px-3.5 flex items-center justify-center gap-2 text-[12.5px] font-semibold transition touch-manipulation text-center"
-              >
-                <WhatsAppCircleIcon size={17} variant="green" />
-                <span>
-                  Avisar cliente que o horário foi liberado (falta de sinal)
-                </span>
-              </a>
-            ) : null}
           </div>
 
           {/* Client Notes Card */}
@@ -476,17 +577,22 @@ function AppointmentDetailsContent() {
         </div>
       </div>
 
-      {/* Modal de Remarcação com verificação real de disponibilidade */}
+      {/* Modal de Remarcação / Reativação com verificação real de disponibilidade */}
       {rescheduleOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#2D1C18]/45 p-2.5 min-[375px]:p-3">
           <div className="w-full max-w-[410px] max-h-[88dvh] overflow-y-auto bg-[#F8F1EB] border border-[#E6D8CF] rounded-[22px] p-4 min-[375px]:p-5 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-[#E6D8CF]">
               <h3 className="font-serif text-[18px] font-semibold text-[#2D1C18]">
-                Remarcar agendamento
+                {reactivatingCancelled
+                  ? "Reagendar atendimento cancelado"
+                  : "Remarcar agendamento"}
               </h3>
               <button
                 type="button"
-                onClick={() => setRescheduleOpen(false)}
+                onClick={() => {
+                  setRescheduleOpen(false);
+                  setReactivatingCancelled(false);
+                }}
                 aria-label="Fechar modal"
                 className="w-10 h-10 rounded-full bg-[#EADCD3] flex items-center justify-center text-[#2D1C18] active:scale-95 transition touch-manipulation"
               >
@@ -553,7 +659,9 @@ function AppointmentDetailsContent() {
                     !availableSlots.includes(newTime)
                   }
                 >
-                  Salvar novo horário
+                  {reactivatingCancelled
+                    ? "Confirmar novo horário e reativar"
+                    : "Salvar novo horário"}
                 </PrimaryButton>
               </div>
             </form>

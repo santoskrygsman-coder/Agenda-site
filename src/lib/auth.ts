@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { NextResponse } from "next/server";
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { getServerSession } from "next-auth/next";
@@ -105,4 +106,8 @@ export const authOptions: NextAuthOptions = {
 
 export async function getAdminSession() {
   return await getServerSession(authOptions);
+}
+
+export function unauthorizedResponse() {
+  return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 }

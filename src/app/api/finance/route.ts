@@ -61,8 +61,12 @@ export async function GET(request: Request) {
     }> = [];
 
     for (const appt of appointments) {
-      const totalVal = appt.totalAmount || appt.service.price;
-      const signalVal = appt.signalAmount || totalVal * 0.5;
+      const totalVal =
+        appt.totalAmount > 0 ? appt.totalAmount : appt.service.price;
+      const signalVal =
+        typeof appt.signalAmount === "number" && appt.signalAmount >= 0
+          ? appt.signalAmount
+          : Math.round(totalVal * 50) / 100;
 
       if (appt.paymentStatus === "FULL_PAID" || appt.status === "COMPLETED") {
         receivedTotal += totalVal;

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
 import { formatCurrency, formatDuration } from "@/lib/formatters";
 import { invalidateServicesCache } from "@/lib/cache";
+import { deleteStoredServicePhoto } from "@/lib/storage";
 
 async function updateServiceHandler(
   request: Request,
@@ -15,6 +16,14 @@ async function updateServiceHandler(
     }
 
     const { id } = await props.params;
+    const existing = await prisma.service.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Serviço não encontrado" },
+        { status: 404 }
+      );
+    }
+
     const body = await request.json();
 
     const data: Record<string, unknown> = {};
@@ -33,14 +42,14 @@ async function updateServiceHandler(
     }
     if (body.price !== undefined) {
       const price = Number(body.price);
-      if (isNaN(price) || price < 0) {
+      if (!Number.isFinite(price) || price < 0) {
         return NextResponse.json({ error: "Preço inválido" }, { status: 400 });
       }
       data.price = price;
     }
     if (body.duration !== undefined || body.durationMinutes !== undefined) {
       const dur = Number(body.durationMinutes ?? body.duration);
-      if (isNaN(dur) || dur < 15) {
+      if (!Number.isFinite(dur) || dur < 15) {
         return NextResponse.json(
           { error: "A duração mínima é de 15 minutos" },
           { status: 400 }
@@ -53,11 +62,15 @@ async function updateServiceHandler(
     if (body.requiresDeposit !== undefined) {
       data.requiresDeposit = Boolean(body.requiresDeposit);
     }
-    if (body.depositPercentage !== undefined) {
+    if (body.depositPercentage !== undefined && body.depositPercentage !== null) {
       const rawPct = Number(body.depositPercentage);
-      if (!isNaN(rawPct) && rawPct >= 1 && rawPct <= 100) {
-        data.depositPercentage = Math.round(rawPct);
+      if (!Number.isFinite(rawPct) || rawPct < 1 || rawPct > 100) {
+        return NextResponse.json(
+          { error: "O percentual do sinal deve estar entre 1% e 100%." },
+          { status: 400 }
+        );
       }
+      data.depositPercentage = Math.round(rawPct);
     }
 
     const updated = await prisma.service.update({
@@ -65,6 +78,15 @@ async function updateServiceHandler(
       data,
     });
     invalidateServicesCache();
+
+    // Remove arquivo órfão do Supabase caso a fotografia tenha sido substituída ou removida
+    if (
+      body.image !== undefined &&
+      existing.image &&
+      existing.image !== updated.image
+    ) {
+      await deleteStoredServicePhoto(existing.image).catch(() => {});
+    }
 
     return NextResponse.json({
       id: updated.id,
@@ -113,6 +135,14 @@ export async function DELETE(
     }
 
     const { id } = await props.params;
+    const existing = await prisma.service.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Serviço não encontrado" },
+        { status: 404 }
+      );
+    }
+
     const apptCount = await prisma.appointment.count({
       where: { serviceId: id },
     });
@@ -129,6 +159,11 @@ export async function DELETE(
 
     await prisma.service.delete({ where: { id } });
     invalidateServicesCache();
+
+    if (existing.image) {
+      await deleteStoredServicePhoto(existing.image).catch(() => {});
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting service:", error);

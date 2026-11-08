@@ -8,6 +8,9 @@ function isPublicApiRoute(path: string, method: string): boolean {
     (path === "/api/availability" && method === "GET") ||
     (path === "/api/settings" && method === "GET") ||
     (path === "/api/working-hours" && method === "GET") ||
+    (path.startsWith("/api/upload/file/") && method === "GET") ||
+    (path === "/api/appointments/lookup" && method === "GET") ||
+    (path === "/api/notifications/subscribe" && method === "GET") ||
     (path === "/api/appointments" && method === "POST") ||
     (Boolean(path.match(/^\/api\/appointments\/[^/]+\/receipt$/)) &&
       method === "POST")

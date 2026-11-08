@@ -10,31 +10,29 @@ import {
   withBookingLock,
 } from "@/lib/scheduling";
 import {
+  calculateSignalInCents,
   formatCurrency,
   formatDateLongPtBr,
+  formatDateShortDdMm,
   formatPhoneDisplay,
   normalizePhoneDigits,
 } from "@/lib/formatters";
-import {
-  validateBookingPayload,
-} from "@/lib/validation";
-import {
-  getCachedAllServices,
-  getCachedSettings,
-} from "@/lib/cache";
+import { validateBookingPayload } from "@/lib/validation";
+import { getCachedAllServices, getCachedSettings } from "@/lib/cache";
+import { emitAdminNotification } from "@/lib/notifications";
 
 function mapStatusToUi(
   status: string,
   paymentStatus: string
 ): {
-  uiStatus: "concluido" | "confirmado" | "aguardando" | "agendado";
+  uiStatus: "concluido" | "confirmado" | "aguardando" | "agendado" | "cancelado";
   statusLabel: string;
 } {
   if (status === "COMPLETED") {
     return { uiStatus: "concluido", statusLabel: "Concluído" };
   }
   if (status === "CANCELLED" || status === "REJECTED") {
-    return { uiStatus: "agendado", statusLabel: "Cancelado" };
+    return { uiStatus: "cancelado", statusLabel: "Cancelado" };
   }
   if (paymentStatus === "SIGNAL_PAID") {
     return { uiStatus: "confirmado", statusLabel: "Sinal confirmado" };
@@ -96,7 +94,21 @@ export async function GET(request: Request) {
         a.paymentStatus
       );
       const svc = serviceById.get(a.serviceId);
-      const svcPrice = svc?.price ?? a.totalAmount ?? 0;
+      const svcPrice = svc?.price ?? 0;
+      // Preservação histórica: sempre prioriza totalAmount, signalAmount e signalPercentage salvos no agendamento
+      const savedTotal = a.totalAmount > 0 ? a.totalAmount : svcPrice;
+      const savedSignal = typeof a.signalAmount === "number" ? a.signalAmount : 0;
+      const savedSignalPct =
+        typeof a.signalPercentage === "number"
+          ? a.signalPercentage
+          : savedTotal > 0
+          ? Math.round((savedSignal / savedTotal) * 100)
+          : 0;
+      const savedRemaining = Math.max(
+        0,
+        Math.round((savedTotal - savedSignal) * 100) / 100
+      );
+
       return {
         id: a.id,
         date: a.date,
@@ -110,10 +122,13 @@ export async function GET(request: Request) {
         serviceId: a.serviceId,
         serviceName: svc?.name || "Procedimento",
         serviceDuration: svc?.duration || 90,
-        price: a.totalAmount || svcPrice,
-        priceFormatted: formatCurrency(a.totalAmount || svcPrice),
-        signalAmount: a.signalAmount,
-        signalFormatted: formatCurrency(a.signalAmount),
+        price: savedTotal,
+        priceFormatted: formatCurrency(savedTotal),
+        signalPercentage: savedSignalPct,
+        signalAmount: savedSignal,
+        signalFormatted: formatCurrency(savedSignal),
+        remainingAmount: savedRemaining,
+        remainingFormatted: formatCurrency(savedRemaining),
         dbStatus: a.status,
         paymentStatus: a.paymentStatus,
         receiptReportedAt: a.receiptReportedAt,
@@ -182,7 +197,6 @@ export async function POST(request: Request) {
     ]);
 
     // Preparar ou atualizar cadastro da cliente antes da transação de trava de horário
-    // para manter a transação de reserva curta e rápida
     const client = await prisma.client.upsert({
       where: { phone: normalizedPhone },
       create: {
@@ -227,12 +241,14 @@ export async function POST(request: Request) {
         }
 
         const requiresSignal = service.requiresDeposit !== false;
-        const signalPct =
+        const configuredPct =
           service.depositPercentage ?? cachedSettings?.signalPercentage ?? 50;
         const holdMinutes = cachedSettings?.holdMinutes ?? 15;
-        const signalAmount = requiresSignal
-          ? Number(((service.price * signalPct) / 100).toFixed(2))
-          : 0;
+        const signalCalc = calculateSignalInCents(
+          service.price,
+          requiresSignal,
+          configuredPct
+        );
 
         // Bloquear qualquer tentativa de manipulação de preço, valor do sinal ou status pelo cliente
         if (!isAdmin) {
@@ -241,11 +257,11 @@ export async function POST(request: Request) {
             (body.paymentStatus !== undefined &&
               body.paymentStatus !== "PENDING_SIGNAL") ||
             (body.price !== undefined &&
-              Number(body.price) !== Number(service.price)) ||
+              Number(body.price) !== signalCalc.totalAmount) ||
             (body.totalAmount !== undefined &&
-              Number(body.totalAmount) !== Number(service.price)) ||
+              Number(body.totalAmount) !== signalCalc.totalAmount) ||
             (body.signalAmount !== undefined &&
-              Number(body.signalAmount) !== signalAmount)
+              Number(body.signalAmount) !== signalCalc.signalAmount)
           ) {
             throw new Error("MANIPULATED_VALUES");
           }
@@ -280,16 +296,38 @@ export async function POST(request: Request) {
             endTime,
             status: requiresSignal ? "PENDING" : "CONFIRMED",
             paymentStatus: requiresSignal ? "PENDING_SIGNAL" : "PAY_ON_SITE",
-            signalAmount,
-            totalAmount: service.price,
+            signalPercentage: signalCalc.signalPercentage,
+            signalAmount: signalCalc.signalAmount,
+            totalAmount: signalCalc.totalAmount,
             expiresAt,
             notes: notes || null,
           },
         });
 
-        return { appt, serviceName: service.name, holdMinutes };
+        return {
+          appt,
+          serviceName: service.name,
+          holdMinutes,
+          remainingAmount: signalCalc.remainingAmount,
+        };
       })
     );
+
+    // Emitir notificação para o celular da designer (Web Push VAPID + histórico em PostgreSQL)
+    await emitAdminNotification({
+      type: "NEW_APPOINTMENT",
+      title: "Novo agendamento realizado!",
+      body: `${name} • ${created.serviceName} (${formatDateShortDdMm(
+        created.appt.date
+      )} às ${created.appt.startTime})`,
+      appointmentId: created.appt.id,
+      clientName: name,
+      serviceName: created.serviceName,
+      date: created.appt.date,
+      time: created.appt.startTime,
+      targetUrl: `/admin/agendamento?id=${created.appt.id}`,
+      dedupeKey: `new-appt-${created.appt.id}`,
+    });
 
     return NextResponse.json(
       {
@@ -303,8 +341,12 @@ export async function POST(request: Request) {
         paymentStatusLabel:
           created.appt.paymentStatus === "PENDING_SIGNAL"
             ? "Aguardando confirmação"
+            : created.appt.paymentStatus === "PAY_ON_SITE"
+            ? "Confirmado (sem sinal)"
             : "Sinal confirmado",
+        signalPercentage: created.appt.signalPercentage,
         signalAmount: created.appt.signalAmount,
+        remainingAmount: created.remainingAmount,
         totalAmount: created.appt.totalAmount,
         serviceName: created.serviceName,
         expiresAt: created.appt.expiresAt,

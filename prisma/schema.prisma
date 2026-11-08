@@ -72,7 +72,8 @@ model Appointment {
   startTime         String    // Formato HH:MM
   endTime           String    // Formato HH:MM
   status            String    @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED, REJECTED
-  paymentStatus     String    @default("PENDING_SIGNAL") // PENDING_SIGNAL, SIGNAL_PAID, FULL_PAID, REFUNDED
+  paymentStatus     String    @default("PENDING_SIGNAL") // PENDING_SIGNAL, SIGNAL_PAID, FULL_PAID, REFUNDED, PAY_ON_SITE
+  signalPercentage  Float     @default(50)
   signalAmount      Float     @default(0)
   totalAmount       Float     @default(0)
   expiresAt         DateTime? // Prazo limite da reserva temporária aguardando comprovante (ex: +15 min)
@@ -140,4 +141,42 @@ model Settings {
   minAdvanceMinutes Int     @default(0)
   maxDaysAhead      Int     @default(60)
   pendingBlocksSlot Boolean @default(true)
+}
+
+model ServicePhoto {
+  id         String   @id @default(cuid())
+  fileName   String   @unique
+  mimeType   String
+  sizeBytes  Int
+  dataBase64 String
+  createdAt  DateTime @default(now())
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AdminNotification {
+  id            String    @id @default(cuid())
+  type          String
+  title         String
+  body          String
+  appointmentId String?
+  clientName    String
+  serviceName   String
+  date          String
+  time          String
+  targetUrl     String    @default("/admin/agenda")
+  dedupeKey     String    @unique
+  readAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([readAt, createdAt])
+  @@index([appointmentId])
 }

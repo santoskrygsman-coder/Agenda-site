@@ -17,7 +17,8 @@ export default function StatusBadge({
     confirmado: "bg-[#D8EFDC] text-[#3B844E]",
     aguardando: "bg-[#F7E3C0] text-[#9A6824]",
     agendado: "bg-[#E5DFDB] text-[#4E423E]",
-  }[status];
+    cancelado: "bg-[#F3D8D8] text-[#B84A48] border border-[#E2B5B5]",
+  }[status] || "bg-[#E5DFDB] text-[#4E423E]";
 
   if (size === "sm" && status === "aguardando") {
     return (

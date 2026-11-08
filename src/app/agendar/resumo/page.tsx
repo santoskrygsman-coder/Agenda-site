@@ -24,7 +24,10 @@ import {
 } from "@/components/ui/BotanicalDecor";
 import { FICTITIOUS_PIX_KEY, FICTITIOUS_PHONE } from "@/lib/mockData";
 import { useBooking } from "@/context/BookingContext";
-import { formatDateLongPtBr } from "@/lib/formatters";
+import {
+  calculateSignalInCents,
+  formatDateLongPtBr,
+} from "@/lib/formatters";
 import { buildClientReceiptWhatsAppUrl } from "@/lib/whatsapp";
 import { buildQrMatrixFromPayload, generatePixCopyPaste } from "@/lib/pix";
 
@@ -87,14 +90,20 @@ export default function BookingSummaryPage() {
   const countdownSecs = String(remainingSeconds % 60).padStart(2, "0");
 
   const requiresSignal = selectedService.requiresDeposit !== false;
-  const signalPct =
+  const rawPct =
     selectedService.depositPercentage ?? studioSettings.signalPercentage ?? 50;
-  const signalAmount = requiresSignal
-    ? Number(((selectedService.price * signalPct) / 100).toFixed(2))
-    : 0;
-  const remainingAmount = Number(
-    (selectedService.price - signalAmount).toFixed(2)
+  const signalCalc = calculateSignalInCents(
+    selectedService.price,
+    requiresSignal,
+    rawPct
   );
+  const signalPct = signalCalc.signalPercentage;
+  const signalAmount = signalCalc.signalAmount;
+  const remainingAmount = signalCalc.remainingAmount;
+  const totalFormatted = signalCalc.totalAmount.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
   const signalFormatted = signalAmount.toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
@@ -218,16 +227,22 @@ export default function BookingSummaryPage() {
 
           {/* Valores do Sinal e Saldo */}
           <div className="bg-[#F4E3DC] border border-[#E5CEC4] rounded-[18px] p-3.5 space-y-2">
+            <div className="flex items-center justify-between text-[12.5px] text-[#5C4740]">
+              <span>Valor total do procedimento</span>
+              <span className="font-semibold text-[#2D1C18]">
+                R$ {totalFormatted}
+              </span>
+            </div>
             {requiresSignal ? (
               <>
-                <div className="flex items-center justify-between text-[13px] font-bold text-[#2D1C18]">
+                <div className="flex items-center justify-between text-[13px] font-bold text-[#2D1C18] pt-1 border-t border-[#E5CEC4]/70">
                   <span>Valor do sinal ({signalPct}%)</span>
-                  <span>R$ {signalFormatted}</span>
+                  <span className="text-[#9E5856]">R$ {signalFormatted}</span>
                 </div>
                 <div className="flex items-center justify-between text-[12.5px] text-[#5C4740]">
                   <span className="flex items-center gap-1">
                     <Info size={12.5} className="text-[#8C756C] shrink-0" />
-                    <span>Saldo no dia do atendimento</span>
+                    <span>Restante no dia do atendimento</span>
                   </span>
                   <span className="font-semibold text-[#2D1C18]">
                     R$ {remainingFormatted}
@@ -236,14 +251,14 @@ export default function BookingSummaryPage() {
               </>
             ) : (
               <>
-                <div className="flex items-center justify-between text-[13px] font-bold text-[#2E8540]">
-                  <span>Sinal antecipado</span>
+                <div className="flex items-center justify-between text-[13px] font-bold text-[#2E8540] pt-1 border-t border-[#E5CEC4]/70">
+                  <span>Sinal antecipado (0%)</span>
                   <span>Isento (R$ 0,00)</span>
                 </div>
                 <div className="flex items-center justify-between text-[13px] text-[#2D1C18]">
                   <span className="flex items-center gap-1 font-medium">
                     <Info size={12.5} className="text-[#8C756C] shrink-0" />
-                    <span>Valor total no dia do atendimento</span>
+                    <span>Restante no dia do atendimento</span>
                   </span>
                   <span className="font-bold text-[#2D1C18]">
                     R$ {remainingFormatted}

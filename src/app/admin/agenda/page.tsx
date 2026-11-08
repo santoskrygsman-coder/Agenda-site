@@ -9,7 +9,13 @@ import {
   ChevronRight,
   Bell,
   FileCheck2,
+  CheckCheck,
+  Smartphone,
 } from "lucide-react";
+import {
+  AdminNotificationItem,
+  subscribeDeviceToWebPush,
+} from "@/components/AdminNotifier";
 import MobileContainer from "@/components/ui/MobileContainer";
 import PageHeader from "@/components/ui/PageHeader";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -82,6 +88,11 @@ export default function AdminDailyAgendaPage() {
   );
   const [allAppointments, setAllAppointments] = useState<AppointmentItem[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [adminNotifications, setAdminNotifications] = useState<
+    AdminNotificationItem[]
+  >([]);
+  const [unreadNotifCount, setUnreadNotifCount] = useState<number>(0);
+  const [pushStatusMsg, setPushStatusMsg] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
 
   // Modal de novo agendamento rápido pela profissional
@@ -149,10 +160,20 @@ export default function AdminDailyAgendaPage() {
   const loadAppointments = useCallback(async () => {
     setLoading(true);
     try {
-      const allRes = await fetch("/api/appointments", { cache: "no-store" });
+      const [allRes, notifRes] = await Promise.all([
+        fetch("/api/appointments", { cache: "no-store" }),
+        fetch("/api/notifications", { cache: "no-store" }),
+      ]);
       if (allRes.ok) {
         const allData: AppointmentItem[] = await allRes.json();
         setAllAppointments(Array.isArray(allData) ? allData : []);
+      }
+      if (notifRes.ok) {
+        const notifData = await notifRes.json();
+        setAdminNotifications(
+          Array.isArray(notifData.notifications) ? notifData.notifications : []
+        );
+        setUnreadNotifCount(Number(notifData.unreadCount) || 0);
       }
     } finally {
       setLoading(false);
@@ -162,6 +183,55 @@ export default function AdminDailyAgendaPage() {
   useEffect(() => {
     loadAppointments();
   }, [loadAppointments]);
+
+  useEffect(() => {
+    const onNotifUpdated = (e: Event) => {
+      const custom = e as CustomEvent<{
+        unreadCount: number;
+        notifications: AdminNotificationItem[];
+      }>;
+      if (custom.detail) {
+        setUnreadNotifCount(custom.detail.unreadCount);
+        setAdminNotifications(custom.detail.notifications);
+      }
+    };
+    window.addEventListener("emile-notifications-updated", onNotifUpdated);
+    return () =>
+      window.removeEventListener("emile-notifications-updated", onNotifUpdated);
+  }, []);
+
+  const handleMarkNotificationRead = async (id: string) => {
+    await fetch("/api/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    }).catch(() => {});
+    setAdminNotifications((prev) =>
+      prev.map((n) =>
+        n.id === id ? { ...n, readAt: new Date().toISOString() } : n
+      )
+    );
+    setUnreadNotifCount((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    await fetch("/api/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ markAllRead: true }),
+    }).catch(() => {});
+    const nowIso = new Date().toISOString();
+    setAdminNotifications((prev) =>
+      prev.map((n) => ({ ...n, readAt: n.readAt || nowIso }))
+    );
+    setUnreadNotifCount(0);
+  };
+
+  const handleActivatePushInModal = async () => {
+    setPushStatusMsg("Ativando alertas neste celular...");
+    const res = await subscribeDeviceToWebPush();
+    setPushStatusMsg(res.message);
+  };
 
   const appointments = useMemo(() => {
     const monthPrefix = activeDate.slice(0, 7);
@@ -254,9 +324,11 @@ export default function AdminDailyAgendaPage() {
           onRightClick={() => setNotificationsOpen(true)}
         />
 
-        {pendingNotifications.length > 0 && (
-          <span className="pointer-events-none absolute top-3.5 right-4 w-4 h-4 rounded-full bg-[#B87472] text-white text-[9.5px] font-bold flex items-center justify-center z-20">
-            {pendingNotifications.length}
+        {(unreadNotifCount > 0 || pendingNotifications.length > 0) && (
+          <span className="pointer-events-none absolute top-3.5 right-4 min-w-4 h-4 px-1 rounded-full bg-[#B87472] text-white text-[9.5px] font-bold flex items-center justify-center z-20">
+            {unreadNotifCount > 0
+              ? unreadNotifCount
+              : pendingNotifications.length}
           </span>
         )}
 
@@ -418,7 +490,7 @@ export default function AdminDailyAgendaPage() {
         </button>
       </div>
 
-      {/* Modal de Notificações e Sinais Pendentes */}
+      {/* Modal de Notificações Web Push e Sinais Pendentes */}
       {notificationsOpen && (
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#2D1C18]/45 p-3"
@@ -432,58 +504,150 @@ export default function AdminDailyAgendaPage() {
               <div className="flex items-center gap-2 min-w-0">
                 <Bell size={17} className="text-[#B87472] shrink-0" />
                 <h3 className="font-serif text-[17px] min-[375px]:text-[18px] font-semibold text-[#2D1C18] truncate">
-                  Sinais e Comprovantes ({pendingNotifications.length})
+                  Notificações ({unreadNotifCount})
                 </h3>
               </div>
-              <button
-                type="button"
-                onClick={() => setNotificationsOpen(false)}
-                aria-label="Fechar notificações"
-                className="w-10 h-10 shrink-0 rounded-full bg-[#EADCD3] flex items-center justify-center text-[#2D1C18] active:scale-95 transition touch-manipulation"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {unreadNotifCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleMarkAllNotificationsRead}
+                    className="min-h-[34px] px-2.5 py-1 rounded-full bg-[#EADCD3] text-[#2D1C18] text-[11px] font-semibold flex items-center gap-1 active:scale-95 transition touch-manipulation"
+                  >
+                    <CheckCheck size={13} className="text-[#B87472]" />
+                    <span>Ler todas</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setNotificationsOpen(false)}
+                  aria-label="Fechar notificações"
+                  className="w-9 h-9 shrink-0 rounded-full bg-[#EADCD3] flex items-center justify-center text-[#2D1C18] active:scale-95 transition touch-manipulation"
+                >
+                  <X size={17} />
+                </button>
+              </div>
+            </div>
+
+            {/* Controle de Alertas Push no Celular */}
+            <div className="mt-2.5 bg-[#FAF5F1] border border-[#E7DAD1] rounded-[14px] p-3 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[12px] font-bold text-[#2D1C18] flex items-center gap-1.5">
+                  <Smartphone size={14} className="text-[#B87472] shrink-0" />
+                  <span>Alertas Push neste celular</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleActivatePushInModal}
+                  className="min-h-[32px] px-3 py-1 rounded-full bg-[#B87472] hover:bg-[#A66361] text-white text-[11px] font-bold transition touch-manipulation"
+                >
+                  Sincronizar alertas
+                </button>
+              </div>
+              {pushStatusMsg && (
+                <p className="text-[11px] text-[#5C4841] leading-snug">
+                  {pushStatusMsg}
+                </p>
+              )}
             </div>
 
             <div className="py-3 overflow-y-auto space-y-2.5 flex-1">
-              {pendingNotifications.length === 0 ? (
-                <p className="text-[13px] text-[#6E5B53] text-center py-6">
-                  Nenhum agendamento aguardando confirmação de sinal no momento.
-                </p>
-              ) : (
-                pendingNotifications.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedAppointment(item);
-                      setNotificationsOpen(false);
-                      router.push(`/admin/agendamento?id=${item.id}`);
-                    }}
-                    className="w-full text-left bg-[#FAF5F1] hover:bg-[#F3E6DE] border border-[#E7DAD1] rounded-[14px] p-3.5 flex items-center justify-between gap-2 touch-manipulation"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-[13.5px] font-bold text-[#2D1C18] truncate">
-                        {item.clientName} • {item.time}
-                      </p>
-                      <p className="text-[12px] text-[#6E5B53] truncate">
-                        {item.serviceName} ({item.dateFormatted})
-                      </p>
-                      {item.receiptReportedAt ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-[#2E8540] font-bold mt-1">
-                          <FileCheck2 size={12} className="shrink-0" />
-                          <span>Cliente abriu o WhatsApp • Aguardando confirmação</span>
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-[#B57F24] font-semibold mt-1 block">
-                          Aguardando confirmação do sinal
-                        </span>
-                      )}
-                    </div>
-                    <ChevronRight size={18} className="text-[#B87472] shrink-0" />
-                  </button>
-                ))
+              {adminNotifications.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#7A655D] px-1">
+                    Histórico recente de eventos
+                  </p>
+                  {adminNotifications.map((notif) => {
+                    const isUnread = !notif.readAt;
+                    return (
+                      <button
+                        key={notif.id}
+                        type="button"
+                        onClick={async () => {
+                          if (isUnread) {
+                            await handleMarkNotificationRead(notif.id);
+                          }
+                          setNotificationsOpen(false);
+                          router.push(notif.targetUrl || "/admin/agenda");
+                        }}
+                        className={`w-full text-left rounded-[14px] p-3 border flex items-start justify-between gap-2 transition touch-manipulation ${
+                          isUnread
+                            ? "bg-[#FFFDFB] border-[#B87472] shadow-2xs"
+                            : "bg-[#FAF5F1]/80 border-[#E7DAD1]"
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            {isUnread && (
+                              <span className="w-2 h-2 rounded-full bg-[#B87472] shrink-0" />
+                            )}
+                            <p className="text-[13px] font-bold text-[#2D1C18] truncate">
+                              {notif.title}
+                            </p>
+                          </div>
+                          <p className="text-[12px] text-[#5C4841] mt-0.5 leading-snug">
+                            {notif.body}
+                          </p>
+                        </div>
+                        <ChevronRight
+                          size={17}
+                          className="text-[#B87472] shrink-0 mt-1"
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
               )}
+
+              <div className="space-y-2 pt-1">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#7A655D] px-1">
+                  Sinais aguardando confirmação ({pendingNotifications.length})
+                </p>
+                {pendingNotifications.length === 0 ? (
+                  <p className="text-[12.5px] text-[#6E5B53] text-center py-4">
+                    Nenhum agendamento aguardando confirmação de sinal no
+                    momento.
+                  </p>
+                ) : (
+                  pendingNotifications.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedAppointment(item);
+                        setNotificationsOpen(false);
+                        router.push(`/admin/agendamento?id=${item.id}`);
+                      }}
+                      className="w-full text-left bg-[#FAF5F1] hover:bg-[#F3E6DE] border border-[#E7DAD1] rounded-[14px] p-3.5 flex items-center justify-between gap-2 touch-manipulation"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[13.5px] font-bold text-[#2D1C18] truncate">
+                          {item.clientName} • {item.time}
+                        </p>
+                        <p className="text-[12px] text-[#6E5B53] truncate">
+                          {item.serviceName} ({item.dateFormatted})
+                        </p>
+                        {item.receiptReportedAt ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-[#2E8540] font-bold mt-1">
+                            <FileCheck2 size={12} className="shrink-0" />
+                            <span>
+                              Cliente abriu o WhatsApp • Aguardando confirmação
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-[#B57F24] font-semibold mt-1 block">
+                            Aguardando confirmação do sinal
+                          </span>
+                        )}
+                      </div>
+                      <ChevronRight
+                        size={18}
+                        className="text-[#B87472] shrink-0"
+                      />
+                    </button>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>

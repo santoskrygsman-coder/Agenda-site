@@ -1,201 +1,139 @@
 import { NextResponse } from "next/server";
-import { getAdminSession } from "@/lib/auth";
-import fs from "node:fs/promises";
-import path from "node:path";
+import { getAdminSession, unauthorizedResponse } from "@/lib/auth";
+import { deleteStoredServicePhoto, uploadServicePhoto } from "@/lib/storage";
 
-const ALLOWED_MIME_TYPES: Record<string, string> = {
+const ALLOWED_TYPES: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/jpg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
-  "image/avif": "avif",
 };
 
-const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB para fotos em alta definição (HD)
-const SUPABASE_BUCKET =
-  process.env.SUPABASE_STORAGE_BUCKET || "service-photos";
-
-async function uploadToSupabaseStorage(
-  fileName: string,
-  buffer: Buffer,
-  contentType: string
-): Promise<string | null> {
-  const supabaseUrl = (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return null;
-  }
-
-  const uploadEndpoint = `${supabaseUrl}/storage/v1/object/${SUPABASE_BUCKET}/${fileName}`;
-  const res = await fetch(uploadEndpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${serviceRoleKey}`,
-      apikey: serviceRoleKey,
-      "Content-Type": contentType,
-      "x-upsert": "true",
-    },
-    body: new Uint8Array(buffer),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    throw new Error(
-      `Falha ao enviar imagem para Supabase Storage (${res.status}): ${errText}`
-    );
-  }
-
-  return `${supabaseUrl}/storage/v1/object/public/${SUPABASE_BUCKET}/${fileName}`;
-}
+const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
 export async function POST(request: Request) {
+  const session = await getAdminSession();
+  if (!session) return unauthorizedResponse();
+
   try {
-    const session = await getAdminSession();
-    if (!session) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-    }
-
-    const contentTypeHeader = request.headers.get("content-type") || "";
+    const contentType = request.headers.get("content-type") || "";
     let buffer: Buffer;
+    let mimeType = "image/jpeg";
     let ext = "jpg";
-    let detectedMime = "image/jpeg";
+    let previousUrl: string | null = null;
 
-    if (contentTypeHeader.includes("multipart/form-data")) {
-      const formData = await request.formData();
-      const file = formData.get("file");
+    if (contentType.includes("application/json")) {
+      const body = await request.json().catch(() => ({}));
+      const rawDataUrl =
+        typeof body?.dataUrl === "string" ? body.dataUrl.trim() : "";
+      previousUrl =
+        typeof body?.previousUrl === "string" ? body.previousUrl.trim() : null;
 
-      if (!file || !(file instanceof Blob)) {
-        return NextResponse.json(
-          { error: "Nenhum arquivo de imagem enviado." },
-          { status: 400 }
-        );
-      }
-
-      if (file.size > MAX_FILE_SIZE_BYTES) {
-        return NextResponse.json(
-          { error: "A imagem excede o limite máximo de 15 MB." },
-          { status: 400 }
-        );
-      }
-
-      const mime = file.type.toLowerCase();
-      if (!ALLOWED_MIME_TYPES[mime]) {
-        return NextResponse.json(
-          {
-            error:
-              "Formato inválido. Envie uma fotografia em JPG, PNG, WEBP ou AVIF.",
-          },
-          { status: 400 }
-        );
-      }
-
-      detectedMime = mime;
-      ext = ALLOWED_MIME_TYPES[mime];
-      const arrayBuf = await file.arrayBuffer();
-      buffer = Buffer.from(arrayBuf);
-    } else {
-      const body = await request.json();
-      const dataUrl = String(body.dataUrl || "");
-      const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
+      const match = rawDataUrl.match(
+        /^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=\s]+)$/i
+      );
       if (!match) {
         return NextResponse.json(
-          { error: "Imagem inválida." },
-          { status: 400 }
-        );
-      }
-      const mime = match[1].toLowerCase();
-      if (!ALLOWED_MIME_TYPES[mime]) {
-        return NextResponse.json(
           {
             error:
-              "Formato inválido. Envie uma fotografia em JPG, PNG, WEBP ou AVIF.",
+              "Formato inválido. Envie uma imagem JPG, PNG ou WebP válida.",
           },
           { status: 400 }
         );
       }
-      detectedMime = mime;
-      ext = ALLOWED_MIME_TYPES[mime];
-      buffer = Buffer.from(match[2], "base64");
 
-      if (buffer.byteLength > MAX_FILE_SIZE_BYTES) {
+      mimeType = match[1].toLowerCase();
+      ext = ALLOWED_TYPES[mimeType] || "jpg";
+      buffer = Buffer.from(match[2].replace(/\s/g, ""), "base64");
+    } else {
+      const formData = await request.formData();
+      const file = formData.get("file");
+      const prevField = formData.get("previousUrl");
+      if (typeof prevField === "string" && prevField.trim()) {
+        previousUrl = prevField.trim();
+      }
+
+      if (!file || typeof (file as Blob).arrayBuffer !== "function") {
         return NextResponse.json(
-          { error: "A imagem excede o limite máximo de 15 MB." },
+          { error: "Nenhuma foto enviada." },
           { status: 400 }
         );
       }
-    }
 
-    const uniqueName = `servico-hd-${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2, 8)}.${ext}`;
-
-    // 1. Se SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY estiverem configurados, envia para o Supabase Storage (Produção)
-    try {
-      const cloudUrl = await uploadToSupabaseStorage(
-        uniqueName,
-        buffer,
-        detectedMime
-      );
-      if (cloudUrl) {
+      const blob = file as File;
+      const rawType = (blob.type || "").toLowerCase();
+      ext = ALLOWED_TYPES[rawType];
+      if (!ext) {
         return NextResponse.json(
-          { url: cloudUrl, storage: "supabase" },
-          { status: 201 }
+          { error: "Formato inválido. Envie uma foto JPG, PNG ou WebP." },
+          { status: 400 }
         );
       }
-    } catch (cloudErr) {
-      console.warn(
-        "Supabase Storage upload unavailable, falling back to inline HD:",
-        cloudErr
+      mimeType = rawType === "image/jpg" ? "image/jpeg" : rawType;
+      const bytes = await blob.arrayBuffer();
+      buffer = Buffer.from(bytes);
+    }
+
+    if (buffer.byteLength === 0) {
+      return NextResponse.json(
+        { error: "O arquivo de imagem está vazio." },
+        { status: 400 }
       );
     }
 
-    // 2. Em ambiente serverless (Netlify) sem SUPABASE_SERVICE_ROLE_KEY, retorna Data URL HD otimizada
-    // para persistência direta no banco PostgreSQL (coluna TEXT)
-    const isServerlessProduction =
-      process.env.NETLIFY === "true" || process.env.NODE_ENV === "production";
-    if (isServerlessProduction) {
-      const inlineDataUrl = `data:${detectedMime};base64,${buffer.toString(
-        "base64"
-      )}`;
+    if (buffer.byteLength > MAX_SIZE_BYTES) {
       return NextResponse.json(
-        { url: inlineDataUrl, storage: "inline-hd" },
-        { status: 201 }
+        { error: "A foto excede o limite máximo de 10 MB." },
+        { status: 400 }
       );
     }
 
-    // 3. Em desenvolvimento local, tenta salvar em public/uploads/services com fallback para Data URL
-    try {
-      const uploadDir = path.join(
-        process.cwd(),
-        "public",
-        "uploads",
-        "services"
-      );
-      await fs.mkdir(uploadDir, { recursive: true });
-      const filePath = path.join(uploadDir, uniqueName);
-      await fs.writeFile(filePath, buffer);
+    const uploaded = await uploadServicePhoto({
+      buffer,
+      mimeType,
+      ext,
+      previousUrl,
+    });
 
-      const publicUrl = `/uploads/services/${uniqueName}`;
-      return NextResponse.json(
-        { url: publicUrl, storage: "local" },
-        { status: 201 }
-      );
-    } catch {
-      const inlineDataUrl = `data:${detectedMime};base64,${buffer.toString(
-        "base64"
-      )}`;
-      return NextResponse.json(
-        { url: inlineDataUrl, storage: "inline-hd" },
-        { status: 201 }
-      );
-    }
+    return NextResponse.json(uploaded, { status: 201 });
   } catch (error) {
-    console.error("Error uploading HD service photo:", error);
-    const message =
-      error instanceof Error && error.message.includes("Supabase Storage")
-        ? error.message
-        : "Erro ao salvar fotografia em alta definição.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Erro ao processar upload de foto:", error);
+    return NextResponse.json(
+      { error: "Não foi possível salvar a foto enviada." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  const session = await getAdminSession();
+  if (!session) return unauthorizedResponse();
+
+  try {
+    const { searchParams } = new URL(request.url);
+    let targetUrl = searchParams.get("url");
+
+    if (!targetUrl) {
+      const body = await request.json().catch(() => ({}));
+      if (typeof body?.url === "string") {
+        targetUrl = body.url;
+      }
+    }
+
+    if (!targetUrl) {
+      return NextResponse.json(
+        { error: "URL da imagem não informada." },
+        { status: 400 }
+      );
+    }
+
+    const result = await deleteStoredServicePhoto(targetUrl);
+    return NextResponse.json({ success: true, ...result });
+  } catch (error) {
+    console.error("Erro ao remover foto personalizada:", error);
+    return NextResponse.json(
+      { error: "Erro ao remover foto personalizada." },
+      { status: 500 }
+    );
   }
 }
