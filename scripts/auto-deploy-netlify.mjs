@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { PrismaClient } from "@prisma/client";
 
 const ROOT = process.cwd();
 
@@ -38,6 +39,20 @@ async function main() {
   console.log("==============================================================");
   console.log("🚀 AUTOMAÇÃO DE DEPLOY: EMILE LASH DESIGNER -> NETLIFY");
   console.log("==============================================================");
+
+  // 0. Garantir coluna depositPercentage no Supabase PostgreSQL
+  const prisma = new PrismaClient();
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "public"."Service" ADD COLUMN IF NOT EXISTS "depositPercentage" DOUBLE PRECISION DEFAULT 50;`
+    );
+    await prisma.$executeRawUnsafe(
+      `UPDATE "public"."Service" SET "depositPercentage" = 50 WHERE "depositPercentage" IS NULL;`
+    );
+    console.log("✅ Coluna depositPercentage verificada no Supabase PostgreSQL.");
+  } finally {
+    await prisma.$disconnect();
+  }
 
   // 1. Verificar autenticação no Netlify CLI
   console.log("\n▶️  1/4 Verificando autenticação no Netlify CLI...");

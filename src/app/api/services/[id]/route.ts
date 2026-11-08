@@ -53,6 +53,12 @@ async function updateServiceHandler(
     if (body.requiresDeposit !== undefined) {
       data.requiresDeposit = Boolean(body.requiresDeposit);
     }
+    if (body.depositPercentage !== undefined) {
+      const rawPct = Number(body.depositPercentage);
+      if (!isNaN(rawPct) && rawPct >= 1 && rawPct <= 100) {
+        data.depositPercentage = Math.round(rawPct);
+      }
+    }
 
     const updated = await prisma.service.update({
       where: { id },
@@ -71,6 +77,7 @@ async function updateServiceHandler(
       image: updated.image,
       active: updated.active,
       requiresDeposit: updated.requiresDeposit,
+      depositPercentage: updated.depositPercentage ?? 50,
     });
   } catch (error) {
     console.error("Error updating service:", error);

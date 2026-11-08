@@ -103,7 +103,8 @@ export default function ClientDataFormPage() {
     router.push("/agendar/resumo");
   };
 
-  const signalPct = studioSettings.signalPercentage || 50;
+  const signalPct =
+    selectedService?.depositPercentage ?? studioSettings.signalPercentage ?? 50;
 
   return (
     <MobileContainer>

@@ -9,6 +9,7 @@ export interface ServiceItem {
   image: string;
   active: boolean;
   requiresDeposit?: boolean;
+  depositPercentage?: number;
 }
 
 export interface AppointmentItem {

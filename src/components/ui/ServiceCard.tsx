@@ -124,7 +124,7 @@ export function ServiceCardComponent({
               >
                 {service.requiresDeposit === false
                   ? "Sem sinal"
-                  : "Sinal obrigatório"}
+                  : `Sinal ${service.depositPercentage ?? 50}%`}
               </span>
             </div>
           </div>

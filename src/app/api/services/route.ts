@@ -32,6 +32,7 @@ export async function GET(request: Request) {
       image: s.image || "/images/service-classica.png",
       active: s.active,
       requiresDeposit: s.requiresDeposit,
+      depositPercentage: s.depositPercentage ?? 50,
     }));
 
     return NextResponse.json(mapped);
@@ -77,6 +78,13 @@ export async function POST(request: Request) {
       );
     }
 
+    const rawDepositPct =
+      body.depositPercentage !== undefined ? Number(body.depositPercentage) : 50;
+    const depositPercentage =
+      !isNaN(rawDepositPct) && rawDepositPct >= 1 && rawDepositPct <= 100
+        ? Math.round(rawDepositPct)
+        : 50;
+
     const allExisting = await getCachedAllServices();
     const created = await prisma.service.create({
       data: {
@@ -90,6 +98,7 @@ export async function POST(request: Request) {
           body.requiresDeposit !== undefined
             ? Boolean(body.requiresDeposit)
             : true,
+        depositPercentage,
         sortOrder: allExisting.length + 1,
       },
     });
@@ -107,6 +116,7 @@ export async function POST(request: Request) {
         image: created.image,
         active: created.active,
         requiresDeposit: created.requiresDeposit,
+        depositPercentage: created.depositPercentage ?? 50,
       },
       { status: 201 }
     );

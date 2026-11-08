@@ -131,32 +131,40 @@ export async function POST(request: Request) {
       .slice(2, 8)}.${ext}`;
 
     // 1. Se SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY estiverem configurados, envia para o Supabase Storage (Produção)
-    const cloudUrl = await uploadToSupabaseStorage(
-      uniqueName,
-      buffer,
-      detectedMime
-    );
-    if (cloudUrl) {
+    try {
+      const cloudUrl = await uploadToSupabaseStorage(
+        uniqueName,
+        buffer,
+        detectedMime
+      );
+      if (cloudUrl) {
+        return NextResponse.json(
+          { url: cloudUrl, storage: "supabase" },
+          { status: 201 }
+        );
+      }
+    } catch (cloudErr) {
+      console.warn(
+        "Supabase Storage upload unavailable, falling back to inline HD:",
+        cloudErr
+      );
+    }
+
+    // 2. Em ambiente serverless (Netlify) sem SUPABASE_SERVICE_ROLE_KEY, retorna Data URL HD otimizada
+    // para persistência direta no banco PostgreSQL (coluna TEXT)
+    const isServerlessProduction =
+      process.env.NETLIFY === "true" || process.env.NODE_ENV === "production";
+    if (isServerlessProduction) {
+      const inlineDataUrl = `data:${detectedMime};base64,${buffer.toString(
+        "base64"
+      )}`;
       return NextResponse.json(
-        { url: cloudUrl, storage: "supabase" },
+        { url: inlineDataUrl, storage: "inline-hd" },
         { status: 201 }
       );
     }
 
-    // 2. Em ambiente serverless de produção (Netlify), o sistema de arquivos é somente leitura
-    const isServerlessProduction =
-      process.env.NETLIFY === "true" || process.env.NODE_ENV === "production";
-    if (isServerlessProduction) {
-      return NextResponse.json(
-        {
-          error:
-            "Armazenamento em nuvem (Supabase Storage) requer SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY configuradas nas variáveis de ambiente de produção.",
-        },
-        { status: 503 }
-      );
-    }
-
-    // 3. Fallback local exclusivamente em desenvolvimento
+    // 3. Em desenvolvimento local, tenta salvar em public/uploads/services com fallback para Data URL
     try {
       const uploadDir = path.join(
         process.cwd(),
@@ -173,14 +181,13 @@ export async function POST(request: Request) {
         { url: publicUrl, storage: "local" },
         { status: 201 }
       );
-    } catch (fsError) {
-      console.error("Local filesystem write failed:", fsError);
+    } catch {
+      const inlineDataUrl = `data:${detectedMime};base64,${buffer.toString(
+        "base64"
+      )}`;
       return NextResponse.json(
-        {
-          error:
-            "Sistema de arquivos somente leitura. Configure SUPABASE_SERVICE_ROLE_KEY nas variáveis de ambiente para enviar fotos para o Supabase Storage.",
-        },
-        { status: 503 }
+        { url: inlineDataUrl, storage: "inline-hd" },
+        { status: 201 }
       );
     }
   } catch (error) {

@@ -31,6 +31,51 @@ const IMAGE_OPTIONS = [
   { label: "Catálogo: Remoção (HD)", value: "/images/service-remocao.png" },
 ];
 
+const DEPOSIT_PRESETS = [20, 30, 40, 50, 100];
+
+async function compressPhotoToHdDataUrl(file: File | Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Falha ao ler imagem"));
+    reader.onload = () => {
+      const rawDataUrl = String(reader.result || "");
+      const img = new Image();
+      img.onerror = () => resolve(rawDataUrl);
+      img.onload = () => {
+        try {
+          const maxDim = 1280;
+          let width = img.naturalWidth || img.width || 800;
+          let height = img.naturalHeight || img.height || 800;
+          if (width > maxDim || height > maxDim) {
+            if (width >= height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve(rawDataUrl);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL("image/jpeg", 0.84);
+          resolve(compressed);
+        } catch {
+          resolve(rawDataUrl);
+        }
+      };
+      img.src = rawDataUrl;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function AdminServicesPage() {
   const {
     allServices,
@@ -52,6 +97,7 @@ export default function AdminServicesPage() {
   const [durationMinutes, setDurationMinutes] = useState("90");
   const [image, setImage] = useState("/images/service-classica.png");
   const [requiresDeposit, setRequiresDeposit] = useState(true);
+  const [depositPercentage, setDepositPercentage] = useState("50");
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState("");
@@ -74,6 +120,7 @@ export default function AdminServicesPage() {
     setDurationMinutes("90");
     setImage("/images/service-classica.png");
     setRequiresDeposit(true);
+    setDepositPercentage("50");
     setUploadSuccess("");
     setErrorMsg("");
     setModalOpen(true);
@@ -87,38 +134,48 @@ export default function AdminServicesPage() {
     setDurationMinutes(String(svc.durationMinutes || 90));
     setImage(svc.image || "/images/service-classica.png");
     setRequiresDeposit(svc.requiresDeposit !== false);
+    setDepositPercentage(String(svc.depositPercentage ?? 50));
     setUploadSuccess("");
     setErrorMsg("");
     setModalOpen(true);
   };
 
-  const uploadRealPhotoBlob = async (file: File | Blob, fileName?: string) => {
+  const uploadRealPhotoBlob = async (file: File | Blob) => {
     setUploadingPhoto(true);
     setErrorMsg("");
     setUploadSuccess("");
 
     try {
-      const formData = new FormData();
-      formData.append(
-        "file",
-        file,
-        fileName || (file instanceof File ? file.name : "foto-real-hd.jpg")
-      );
+      const optimizedDataUrl = await compressPhotoToHdDataUrl(file);
 
       const res = await fetch("/api/upload", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dataUrl: optimizedDataUrl }),
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.url) {
-        setErrorMsg(data.error || "Não foi possível enviar a foto em HD.");
-      } else {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
         setImage(data.url);
-        setUploadSuccess("Foto real em Alta Definição carregada!");
+        setUploadSuccess("Foto personalizada em HD carregada!");
+      } else if (optimizedDataUrl.startsWith("data:image/")) {
+        setImage(optimizedDataUrl);
+        setUploadSuccess("Foto personalizada em HD carregada!");
+      } else {
+        setErrorMsg(data.error || "Não foi possível carregar a foto.");
       }
     } catch {
-      setErrorMsg("Erro ao enviar a fotografia para o servidor.");
+      try {
+        const fallbackDataUrl = await compressPhotoToHdDataUrl(file);
+        if (fallbackDataUrl.startsWith("data:image/")) {
+          setImage(fallbackDataUrl);
+          setUploadSuccess("Foto personalizada em HD carregada!");
+        } else {
+          setErrorMsg("Erro ao processar a fotografia selecionada.");
+        }
+      } catch {
+        setErrorMsg("Erro ao carregar a fotografia selecionada.");
+      }
     } finally {
       setUploadingPhoto(false);
     }
@@ -127,7 +184,7 @@ export default function AdminServicesPage() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    await uploadRealPhotoBlob(file, file.name);
+    await uploadRealPhotoBlob(file);
     e.target.value = "";
   };
 
@@ -144,13 +201,12 @@ export default function AdminServicesPage() {
           const imageType = item.types.find((t) => t.startsWith("image/"));
           if (imageType) {
             const blob = await item.getType(imageType);
-            const ext = imageType.split("/")[1] || "png";
-            await uploadRealPhotoBlob(blob, `foto-colada-hd.${ext}`);
+            await uploadRealPhotoBlob(blob);
             return;
           }
         }
         setErrorMsg(
-          "Nenhuma imagem encontrada na área de transferência. Use 'Enviar foto real (HD)'."
+          "Nenhuma imagem encontrada na área de transferência. Use 'Enviar foto real'."
         );
       } catch {
         fileInputRef.current?.click();
@@ -165,6 +221,10 @@ export default function AdminServicesPage() {
     setErrorMsg("");
     const parsedPrice = Number(String(price).replace(",", "."));
     const parsedDuration = Number(durationMinutes);
+    const parsedDepositPct = Math.min(
+      100,
+      Math.max(1, Math.round(Number(depositPercentage) || 50))
+    );
 
     if (!name.trim()) {
       setErrorMsg("Informe o nome do serviço.");
@@ -189,6 +249,7 @@ export default function AdminServicesPage() {
       image,
       active: editingService ? editingService.active : true,
       requiresDeposit,
+      depositPercentage: parsedDepositPct,
     });
     setSaving(false);
 
@@ -360,42 +421,127 @@ export default function AdminServicesPage() {
                 </div>
               </div>
 
-              {/* Opção de Sinal Obrigatório por Serviço */}
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => setRequiresDeposit((prev) => !prev)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    setRequiresDeposit((prev) => !prev);
-                  }
-                }}
-                className="w-full min-h-[56px] bg-[#FAF5F1] border border-[#E4D5CB] rounded-[14px] px-3.5 py-2.5 flex items-center justify-between gap-3 cursor-pointer touch-manipulation select-none"
-              >
-                <div className="min-w-0">
-                  <p className="text-[13px] font-bold text-[#2D1C18]">
-                    Exigir sinal obrigatório via Pix
-                  </p>
-                  <p className="text-[11.5px] text-[#6E5850] leading-snug mt-0.5">
-                    {requiresDeposit
-                      ? "Ativado: cliente paga o sinal via Pix para confirmar o horário."
-                      : "Desativado: cliente agenda sem pagar sinal antecipado."}
-                  </p>
-                </div>
-                <span
-                  role="switch"
-                  aria-checked={requiresDeposit}
-                  className={`w-[46px] h-[26px] rounded-full p-0.5 transition-colors duration-200 flex items-center shrink-0 ${
-                    requiresDeposit ? "bg-[#B87472]" : "bg-[#D5C5BC]"
-                  }`}
+              {/* Opção de Sinal Obrigatório por Serviço + Escolha da % do Sinal */}
+              <div className="w-full bg-[#FAF5F1] border border-[#E4D5CB] rounded-[14px] p-3.5 space-y-3">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setRequiresDeposit((prev) => !prev)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setRequiresDeposit((prev) => !prev);
+                    }
+                  }}
+                  className="flex items-center justify-between gap-3 cursor-pointer touch-manipulation select-none"
                 >
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-bold text-[#2D1C18]">
+                      Exigir sinal obrigatório via Pix
+                    </p>
+                    <p className="text-[11.5px] text-[#6E5850] leading-snug mt-0.5">
+                      {requiresDeposit
+                        ? "Ativado: cliente paga o sinal via Pix para confirmar o horário."
+                        : "Desativado: cliente agenda sem pagar sinal antecipado."}
+                    </p>
+                  </div>
                   <span
-                    className={`w-[22px] h-[22px] rounded-full bg-[#FFFDFB] shadow-sm transform transition-transform duration-200 ${
-                      requiresDeposit ? "translate-x-[20px]" : "translate-x-0"
+                    role="switch"
+                    aria-checked={requiresDeposit}
+                    className={`w-[46px] h-[26px] rounded-full p-0.5 transition-colors duration-200 flex items-center shrink-0 ${
+                      requiresDeposit ? "bg-[#B87472]" : "bg-[#D5C5BC]"
                     }`}
-                  />
-                </span>
+                  >
+                    <span
+                      className={`w-[22px] h-[22px] rounded-full bg-[#FFFDFB] shadow-sm transform transition-transform duration-200 ${
+                        requiresDeposit ? "translate-x-[20px]" : "translate-x-0"
+                      }`}
+                    />
+                  </span>
+                </div>
+
+                {requiresDeposit && (
+                  <div className="pt-2.5 border-t border-[#EAE0D8] space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-[12px] font-semibold text-[#4E3B35]">
+                        Porcentagem do sinal (%)
+                      </label>
+                      <div className="flex items-center gap-1 bg-[#FFFDFB] border border-[#DFCFC5] rounded-[10px] px-2.5 py-1">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min="1"
+                          max="100"
+                          value={depositPercentage}
+                          onChange={(e) => setDepositPercentage(e.target.value)}
+                          className="w-12 text-right text-[13.5px] font-bold text-[#2D1C18] bg-transparent focus:outline-none"
+                        />
+                        <span className="text-[12.5px] font-bold text-[#6E5850]">
+                          %
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {DEPOSIT_PRESETS.map((pct) => {
+                        const isSelected = Number(depositPercentage) === pct;
+                        return (
+                          <button
+                            key={pct}
+                            type="button"
+                            onClick={() => setDepositPercentage(String(pct))}
+                            className={`min-h-[36px] rounded-[10px] text-[12px] font-bold transition touch-manipulation ${
+                              isSelected
+                                ? "bg-[#B87472] text-white shadow-xs"
+                                : "bg-[#F4EAE3] text-[#4E3B35] border border-[#E2D3C9]"
+                            }`}
+                          >
+                            {pct}%
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {(() => {
+                      const numPrice =
+                        Number(String(price).replace(",", ".")) || 0;
+                      const numPct = Math.min(
+                        100,
+                        Math.max(1, Number(depositPercentage) || 50)
+                      );
+                      const calcSignal = Number(
+                        ((numPrice * numPct) / 100).toFixed(2)
+                      );
+                      const calcRest = Number(
+                        Math.max(0, numPrice - calcSignal).toFixed(2)
+                      );
+                      return (
+                        <div className="bg-[#F4E3DC]/80 border border-[#E5CEC4] rounded-[10px] px-3 py-2 flex items-center justify-between text-[11.5px] text-[#2D1C18]">
+                          <span>
+                            Sinal ({numPct}%):{" "}
+                            <strong>
+                              R${" "}
+                              {calcSignal.toLocaleString("pt-BR", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </strong>
+                          </span>
+                          <span className="text-[#5C4740]">
+                            No dia:{" "}
+                            <strong className="text-[#2D1C18]">
+                              R${" "}
+                              {calcRest.toLocaleString("pt-BR", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </strong>
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
 
               {/* SEÇÃO DE FOTOGRAFIA REAL EM ALTA DEFINIÇÃO (HD) */}
@@ -448,7 +594,7 @@ export default function AdminServicesPage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,image/avif"
+                  accept="image/*"
                   onChange={handleFileChange}
                   className="hidden"
                 />

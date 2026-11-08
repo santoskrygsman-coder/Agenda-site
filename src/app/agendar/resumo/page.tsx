@@ -87,7 +87,8 @@ export default function BookingSummaryPage() {
   const countdownSecs = String(remainingSeconds % 60).padStart(2, "0");
 
   const requiresSignal = selectedService.requiresDeposit !== false;
-  const signalPct = studioSettings.signalPercentage || 50;
+  const signalPct =
+    selectedService.depositPercentage ?? studioSettings.signalPercentage ?? 50;
   const signalAmount = requiresSignal
     ? Number(((selectedService.price * signalPct) / 100).toFixed(2))
     : 0;

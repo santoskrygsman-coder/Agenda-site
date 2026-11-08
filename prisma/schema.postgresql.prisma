@@ -43,6 +43,7 @@ model Service {
   image           String         @default("/images/service-classica.png")
   active          Boolean        @default(true)
   requiresDeposit Boolean        @default(true)
+  depositPercentage Float?       @default(50)
   sortOrder       Int            @default(0)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt

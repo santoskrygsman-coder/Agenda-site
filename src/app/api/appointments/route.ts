@@ -227,7 +227,8 @@ export async function POST(request: Request) {
         }
 
         const requiresSignal = service.requiresDeposit !== false;
-        const signalPct = cachedSettings?.signalPercentage ?? 50;
+        const signalPct =
+          service.depositPercentage ?? cachedSettings?.signalPercentage ?? 50;
         const holdMinutes = cachedSettings?.holdMinutes ?? 15;
         const signalAmount = requiresSignal
           ? Number(((service.price * signalPct) / 100).toFixed(2))
