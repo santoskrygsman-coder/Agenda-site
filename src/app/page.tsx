@@ -33,7 +33,25 @@ export default function ClientHomePage() {
     todayOpenStatus,
   } = useBooking();
   const [sharedCopied, setSharedCopied] = React.useState(false);
-  const featuredService = services[0];
+  const [categoryFilter, setCategoryFilter] = React.useState<
+    "todos" | "cilios" | "lifting_sobrancelha" | "manutencao"
+  >("todos");
+
+  const filteredServices = services.filter((svc) => {
+    if (categoryFilter === "todos") return true;
+    const n = svc.name.toLowerCase();
+    const isMaint =
+      n.includes("manuten") || n.includes("remo") || n.includes("retoque");
+    const isLiftBrow =
+      n.includes("lifting") ||
+      n.includes("lifithing") ||
+      n.includes("brow") ||
+      n.includes("sobrancelha") ||
+      n.includes("lamination");
+    if (categoryFilter === "manutencao") return isMaint;
+    if (categoryFilter === "lifting_sobrancelha") return isLiftBrow;
+    return !isMaint && !isLiftBrow;
+  });
 
   const whatsappHref = buildGeneralContactWhatsAppUrl(studioSettings.whatsapp);
 
@@ -188,31 +206,73 @@ export default function ClientHomePage() {
           </div>
         </div>
 
-        {/* Nossos serviços section */}
-        <div className="pt-4">
-          <div className="flex items-center justify-between mb-2.5">
-            <h2 className="text-[16px] font-bold text-[#2D1C18]">
-              Nossos serviços
-            </h2>
+        {/* Nossos serviços section - Lista completa direto na tela inicial */}
+        <div id="nossos-servicos" className="pt-4 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-[16.5px] font-bold text-[#2D1C18]">
+                Nossos serviços
+              </h2>
+              <p className="text-[11.5px] text-[#6E5850]">
+                Toque no procedimento para agendar ou em 🔍 Ver para ampliar
+              </p>
+            </div>
             <Link
               href="/servicos"
-              className="min-h-[40px] px-2 -mr-2 text-[13px] font-semibold text-[#B87472] hover:text-[#9E5D5B] flex items-center gap-0.5"
+              className="min-h-[36px] px-2 -mr-2 text-[12.5px] font-semibold text-[#B87472] hover:text-[#9E5D5B] flex items-center gap-0.5 shrink-0"
             >
               <span>Ver todos</span>
-              <ChevronRight size={15} />
+              <ChevronRight size={14} />
             </Link>
           </div>
 
-          {featuredService && (
-            <ServiceCard
-              service={featuredService}
-              mode="client"
-              onSelect={(svc) => {
-                setSelectedServiceById(svc.id);
-                router.push("/agendar/data");
-              }}
-            />
-          )}
+          {/* Abas de filtro rápido por categoria */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            {[
+              { key: "todos", label: "Todos" },
+              { key: "cilios", label: "Extensão de Cílios" },
+              { key: "lifting_sobrancelha", label: "Lash Lifting & Brow" },
+              { key: "manutencao", label: "Manutenção & Remoção" },
+            ].map((tab) => {
+              const active = categoryFilter === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() =>
+                    setCategoryFilter(
+                      tab.key as
+                        | "todos"
+                        | "cilios"
+                        | "lifting_sobrancelha"
+                        | "manutencao"
+                    )
+                  }
+                  className={`min-h-[38px] px-3.5 py-1.5 rounded-full text-[12px] shrink-0 transition-colors touch-manipulation ${
+                    active
+                      ? "bg-[#B87472] text-white font-semibold shadow-2xs"
+                      : "bg-[#FAF5F1] border border-[#E5D4C9] text-[#4E3B35] font-medium"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="space-y-2.5 pt-0.5">
+            {filteredServices.map((svc) => (
+              <ServiceCard
+                key={svc.id}
+                service={svc}
+                mode="client"
+                onSelect={(selected) => {
+                  setSelectedServiceById(selected.id);
+                  router.push("/agendar/data");
+                }}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </MobileContainer>
