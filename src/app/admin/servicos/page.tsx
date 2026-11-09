@@ -13,12 +13,14 @@ import {
   Check,
   ZoomIn,
   ZoomOut,
+  Crop,
 } from "lucide-react";
 import MobileContainer from "@/components/ui/MobileContainer";
 import PageHeader from "@/components/ui/PageHeader";
 import ServiceCard, {
   resolveHdServiceImage,
 } from "@/components/ui/ServiceCard";
+import ServicePhotoCropModal from "@/components/ui/ServicePhotoCropModal";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import { useBooking } from "@/context/BookingContext";
 import { ServiceItem } from "@/lib/mockData";
@@ -135,6 +137,11 @@ export default function AdminServicesPage() {
   const [previewZoomOpen, setPreviewZoomOpen] = useState(false);
   const [previewMagnified, setPreviewMagnified] = useState(false);
 
+  // Modal de recorte e enquadramento interativo da foto do serviço
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropSourceDataUrl, setCropSourceDataUrl] = useState("");
+  const [cropMimeType, setCropMimeType] = useState("image/jpeg");
+
   const cleanupUnsavedUploadIfNeeded = async () => {
     const tempUrl = unsavedUploadedUrlRef.current;
     unsavedUploadedUrlRef.current = null;
@@ -149,6 +156,7 @@ export default function AdminServicesPage() {
 
   const closeModal = () => {
     void cleanupUnsavedUploadIfNeeded();
+    setCropModalOpen(false);
     setModalOpen(false);
   };
 
@@ -164,6 +172,7 @@ export default function AdminServicesPage() {
     setDepositPercentage("50");
     setUploadSuccess("");
     setErrorMsg("");
+    setCropModalOpen(false);
     setModalOpen(true);
   };
 
@@ -179,10 +188,46 @@ export default function AdminServicesPage() {
     setDepositPercentage(String(svc.depositPercentage ?? 50));
     setUploadSuccess("");
     setErrorMsg("");
+    setCropModalOpen(false);
     setModalOpen(true);
   };
 
-  const uploadRealPhotoBlob = async (file: File | Blob) => {
+  const uploadCroppedDataUrl = async (croppedDataUrl: string) => {
+    setCropModalOpen(false);
+    setErrorMsg("");
+    setUploadSuccess("");
+    setUploadingPhoto(true);
+
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dataUrl: croppedDataUrl,
+          previousUrl: unsavedUploadedUrlRef.current,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        unsavedUploadedUrlRef.current = data.url;
+        setImage(data.url);
+        setUploadSuccess(
+          "Foto recortada e enviada! Toque em 'Salvar serviço' para concluir."
+        );
+      } else {
+        setErrorMsg(
+          data.error || "Não foi possível enviar a foto para o servidor."
+        );
+      }
+    } catch {
+      setErrorMsg("Erro de conexão ao enviar a fotografia. Tente novamente.");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const openCropperWithBlob = async (file: File | Blob) => {
     setErrorMsg("");
     setUploadSuccess("");
 
@@ -197,40 +242,33 @@ export default function AdminServicesPage() {
       return;
     }
 
-    setUploadingPhoto(true);
     try {
-      const optimizedDataUrl = await preparePhotoDataUrl(file);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dataUrl: optimizedDataUrl,
-          previousUrl: unsavedUploadedUrlRef.current,
-        }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.url) {
-        unsavedUploadedUrlRef.current = data.url;
-        setImage(data.url);
-        setUploadSuccess(
-          "Foto personalizada enviada! Toque em 'Salvar serviço' para concluir."
-        );
-      } else {
-        setErrorMsg(data.error || "Não foi possível enviar a foto para o servidor.");
-      }
+      const preparedDataUrl = await preparePhotoDataUrl(file);
+      const targetMime =
+        rawMime === "image/png"
+          ? "image/png"
+          : rawMime === "image/webp"
+          ? "image/webp"
+          : "image/jpeg";
+      setCropMimeType(targetMime);
+      setCropSourceDataUrl(preparedDataUrl);
+      setCropModalOpen(true);
     } catch {
-      setErrorMsg("Erro de conexão ao enviar a fotografia. Tente novamente.");
-    } finally {
-      setUploadingPhoto(false);
+      setErrorMsg("Não foi possível carregar a foto selecionada.");
     }
+  };
+
+  const openCropperWithCurrentPhoto = () => {
+    setErrorMsg("");
+    setCropMimeType("image/jpeg");
+    setCropSourceDataUrl(resolveHdServiceImage(image));
+    setCropModalOpen(true);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    await uploadRealPhotoBlob(file);
+    await openCropperWithBlob(file);
     e.target.value = "";
   };
 
@@ -257,7 +295,7 @@ export default function AdminServicesPage() {
           const imageType = item.types.find((t) => t.startsWith("image/"));
           if (imageType) {
             const blob = await item.getType(imageType);
-            await uploadRealPhotoBlob(blob);
+            await openCropperWithBlob(blob);
             return;
           }
         }
@@ -647,17 +685,27 @@ export default function AdminServicesPage() {
                     <Camera size={14} className="text-[#B87472] shrink-0" />
                     <span>Fotografia do procedimento (HD)</span>
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPreviewMagnified(false);
-                      setPreviewZoomOpen(true);
-                    }}
-                    className="min-h-[32px] text-[11px] font-bold text-[#B87472] hover:text-[#9E5D5B] flex items-center gap-1 bg-[#F4E3DC] px-2.5 py-1 rounded-full touch-manipulation"
-                  >
-                    <Search size={11} />
-                    <span>Testar lupa HD</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={openCropperWithCurrentPhoto}
+                      className="min-h-[32px] text-[11px] font-bold text-[#2D1C18] hover:text-[#B87472] flex items-center gap-1 bg-[#EADCD3] px-2.5 py-1 rounded-full touch-manipulation"
+                    >
+                      <Crop size={11} className="text-[#B87472]" />
+                      <span>Recortar</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviewMagnified(false);
+                        setPreviewZoomOpen(true);
+                      }}
+                      className="min-h-[32px] text-[11px] font-bold text-[#B87472] hover:text-[#9E5D5B] flex items-center gap-1 bg-[#F4E3DC] px-2.5 py-1 rounded-full touch-manipulation"
+                    >
+                      <Search size={11} />
+                      <span>Testar lupa HD</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Prévia da Foto que aparece na Lupa */}
@@ -678,16 +726,26 @@ export default function AdminServicesPage() {
                         : "Foto HD do Catálogo"}
                     </span>
                   </div>
-                  {isCustomUploadedPhoto && (
+                  <div className="absolute top-2 right-2 flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={handleRemoveCustomPhoto}
-                      className="absolute top-2 right-2 bg-[#2D1C18]/85 hover:bg-[#B84A48] text-[#FAF5F1] text-[10.5px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 transition touch-manipulation"
+                      onClick={openCropperWithCurrentPhoto}
+                      className="bg-[#FAF5F1]/95 hover:bg-white text-[#2D1C18] text-[10.5px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs transition touch-manipulation"
                     >
-                      <Trash2 size={11} />
-                      <span>Remover foto</span>
+                      <Crop size={11} className="text-[#B87472]" />
+                      <span>Ajustar corte</span>
                     </button>
-                  )}
+                    {isCustomUploadedPhoto && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveCustomPhoto}
+                        className="bg-[#2D1C18]/85 hover:bg-[#B84A48] text-[#FAF5F1] text-[10.5px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 transition touch-manipulation"
+                      >
+                        <Trash2 size={11} />
+                        <span>Remover</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {uploadSuccess && (
@@ -872,6 +930,15 @@ export default function AdminServicesPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Interativo de Corte e Enquadramento da Fotografia do Serviço */}
+      <ServicePhotoCropModal
+        open={cropModalOpen}
+        sourceDataUrl={cropSourceDataUrl}
+        mimeType={cropMimeType}
+        onCancel={() => setCropModalOpen(false)}
+        onConfirmCrop={uploadCroppedDataUrl}
+      />
     </MobileContainer>
   );
 }
