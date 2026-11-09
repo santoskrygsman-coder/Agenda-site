@@ -6,7 +6,7 @@ import type {
   BlockedDate,
 } from "@prisma/client";
 
-const CACHE_TTL_MS = 1_500;
+const CACHE_TTL_MS = 60_000;
 
 interface CacheEntry<T> {
   data: T;
@@ -29,9 +29,7 @@ const store: ServerCacheStore = globalForCache.__studioServerCache ?? {
   inflight: {},
 };
 
-if (process.env.NODE_ENV !== "production") {
-  globalForCache.__studioServerCache = store;
-}
+globalForCache.__studioServerCache = store;
 
 function isFresh<T>(entry?: CacheEntry<T>): entry is CacheEntry<T> {
   return Boolean(entry && entry.expiresAt > Date.now());

@@ -120,25 +120,25 @@ function writeCachedJson<T>(key: string, value: T): void {
   }
 }
 
+const DEFAULT_STUDIO_SETTINGS: StudioSettings = {
+  professionalName: "Emile Lash Designer",
+  specialty: "Cílios • Sobrancelha • Brow Lamination • Lash Lifting",
+  description: "Centro - Posto da Mata • @emiledesiigner",
+  whatsapp: "",
+  pixKey: "000.000.000-00",
+  pixKeyType: "CPF",
+  signalPercentage: 50,
+  holdMinutes: 15,
+};
+
 export function BookingProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const defaultBookingDate = getDefaultBookingDate();
-  const [services, setServices] = useState<ServiceItem[]>(() =>
-    readCachedJson<ServiceItem[]>(STORAGE_SERVICES_KEY, [])
-  );
-  const [allServices, setAllServices] = useState<ServiceItem[]>(() =>
-    readCachedJson<ServiceItem[]>(STORAGE_ALL_SERVICES_KEY, [])
-  );
+  const [services, setServices] = useState<ServiceItem[]>([]);
+  const [allServices, setAllServices] = useState<ServiceItem[]>([]);
   const [servicesLoading, setServicesLoading] = useState<boolean>(true);
   const [servicesLoaded, setServicesLoaded] = useState<boolean>(false);
-  const [selectedServiceId, setSelectedServiceId] = useState<string>(() => {
-    if (typeof window === "undefined") return "";
-    try {
-      return window.sessionStorage.getItem(STORAGE_SELECTED_SVC_KEY) || "";
-    } catch {
-      return "";
-    }
-  });
+  const [selectedServiceId, setSelectedServiceId] = useState<string>("");
 
   const [selectedYear, setSelectedYear] = useState<number>(
     defaultBookingDate.year
@@ -172,21 +172,10 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
   const [lastCreatedExpiresAt, setLastCreatedExpiresAt] = useState<
     string | null
   >(null);
-  const [todayOpenStatus, setTodayOpenStatus] = useState<string>(() =>
-    readCachedJson<string>(STORAGE_OPEN_STATUS_KEY, "")
-  );
+  const [todayOpenStatus, setTodayOpenStatus] = useState<string>("");
 
-  const [studioSettings, setStudioSettings] = useState<StudioSettings>(() =>
-    readCachedJson<StudioSettings>(STORAGE_SETTINGS_KEY, {
-      professionalName: "Emile Lash Designer",
-      specialty: "Cílios • Sobrancelha • Brow Lamination • Lash Lifting",
-      description: "Centro - Posto da Mata • @emiledesiigner",
-      whatsapp: "",
-      pixKey: "000.000.000-00",
-      pixKeyType: "CPF",
-      signalPercentage: 50,
-      holdMinutes: 15,
-    })
+  const [studioSettings, setStudioSettings] = useState<StudioSettings>(
+    DEFAULT_STUDIO_SETTINGS
   );
 
   const [selectedAppointment, setSelectedAppointment] =
@@ -338,14 +327,48 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
+    const cachedServices = readCachedJson<ServiceItem[]>(
+      STORAGE_SERVICES_KEY,
+      []
+    );
+    const cachedAllServices = readCachedJson<ServiceItem[]>(
+      STORAGE_ALL_SERVICES_KEY,
+      []
+    );
+    const cachedOpenStatus = readCachedJson<string>(STORAGE_OPEN_STATUS_KEY, "");
+    const cachedSettings = readCachedJson<StudioSettings | null>(
+      STORAGE_SETTINGS_KEY,
+      null
+    );
+
+    if (cachedServices.length > 0) {
+      setServices(cachedServices);
+      setServicesLoading(false);
+    }
+    if (cachedAllServices.length > 0) {
+      setAllServices(cachedAllServices);
+    }
+    if (cachedOpenStatus) {
+      setTodayOpenStatus(cachedOpenStatus);
+    }
+    if (cachedSettings) {
+      setStudioSettings(cachedSettings);
+    }
+    try {
+      const savedSvcId = window.sessionStorage.getItem(STORAGE_SELECTED_SVC_KEY);
+      if (savedSvcId) {
+        setSelectedServiceId(savedSvcId);
+      }
+    } catch {}
+
     refreshServices();
     refreshSettings();
     refreshWorkingHours();
   }, [refreshServices, refreshSettings, refreshWorkingHours]);
 
-  // Carregar disponibilidade real nas telas da cliente somente após os serviços reais estarem carregados
+  // Carregar disponibilidade real somente nas telas de agendamento (/agendar/*)
   useEffect(() => {
-    if (pathname?.startsWith("/admin") || pathname === "/login") {
+    if (!pathname?.startsWith("/agendar")) {
       return;
     }
     if (!servicesLoaded && services.length === 0) {

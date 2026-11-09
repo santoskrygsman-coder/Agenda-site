@@ -87,6 +87,8 @@ export default function ClientHomePage() {
           <img
             src="/images/hero-eye.png"
             alt="Extensão de cílios realista"
+            fetchPriority="high"
+            decoding="async"
             className="w-full h-full object-cover object-center"
           />
           {/* Smooth bottom gradient fade into warm nude-cream background */}

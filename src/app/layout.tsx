@@ -41,11 +41,6 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var clean=function(){document.querySelectorAll('script[data-nf-variant],[data-netlify-site-id],iframe[srcdoc]').forEach(function(e){e.remove()});};clean();new MutationObserver(clean).observe(document.documentElement,{childList:true,subtree:true});}catch(e){}})();`,
-          }}
-        />
       </head>
       <body className="antialiased">
         <BookingProvider>{children}</BookingProvider>

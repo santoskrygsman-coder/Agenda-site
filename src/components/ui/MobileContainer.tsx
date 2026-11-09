@@ -45,45 +45,8 @@ export default function MobileContainer({
   const pathname = usePathname();
   const { isMenuOpen, setIsMenuOpen, studioSettings } = useBooking();
 
-  React.useEffect(() => {
-    if (typeof document === "undefined") return;
-
-    const cleanExternalOverlays = () => {
-      const selectors = [
-        "iframe[srcdoc]",
-        'script[data-nf-variant]',
-        '[data-netlify-site-id]',
-        'body > *:not([data-app-root="true"]):not(script):not(style):not(link):not(nextjs-portal)',
-        "html > *:not(head):not(body)",
-      ];
-      for (const sel of selectors) {
-        document.querySelectorAll(sel).forEach((el) => {
-          el.remove();
-        });
-      }
-    };
-
-    cleanExternalOverlays();
-    const observer = new MutationObserver(() => cleanExternalOverlays());
-    observer.observe(document.documentElement, {
-      childList: true,
-      subtree: false,
-    });
-    if (document.body) {
-      observer.observe(document.body, {
-        childList: true,
-        subtree: false,
-      });
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <div
-      data-app-root="true"
-      className="min-h-dvh w-full bg-[#E6DAD0] flex justify-center items-start overflow-x-hidden"
-    >
+    <div className="min-h-dvh w-full bg-[#E6DAD0] flex justify-center items-start overflow-x-hidden">
       <div
         className={`w-full max-w-[430px] min-h-dvh bg-[#F4EAE3] text-[#2D1C18] flex flex-col relative overflow-x-hidden shadow-[0_10px_40px_rgba(45,28,24,0.12)] ${className}`}
       >

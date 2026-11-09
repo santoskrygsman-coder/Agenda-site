@@ -49,17 +49,6 @@ body {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 }
 
-/* Oculta widgets/iframes flutuantes externos injetados fora do container do app */
-body > iframe,
-body > iframe[srcdoc],
-body > div:has(> iframe[srcdoc]),
-iframe[src*="netlify" i],
-body > *:not([data-app-root="true"]):not(script):not(style):not(link):not(nextjs-portal),
-html > *:not(head):not(body) {
+iframe[srcdoc] {
   display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  width: 0 !important;
-  height: 0 !important;
-  pointer-events: none !important;
 }
