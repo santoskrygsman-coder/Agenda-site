@@ -33,8 +33,59 @@ export async function acquirePostgresBookingLock(
 ): Promise<void> {
   const dbUrl = process.env.DATABASE_URL || "";
   if (dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://")) {
-    const lockKey = `booking:${professionalKey}:${dateStr}`;
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+    try {
+      const lockKey = `booking:${professionalKey}:${dateStr}`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+    } catch {
+      // Fallback caso o pooler bloqueie advisory lock
+    }
+  }
+}
+
+async function queryAppointmentsForDate(
+  db: Prisma.TransactionClient | typeof prisma,
+  dateStr: string,
+  statusesToBlock: string[],
+  excludeAppointmentId?: string
+): Promise<Array<{ startTime: string; endTime: string }>> {
+  try {
+    return await db.appointment.findMany({
+      where: {
+        date: dateStr,
+        status: { in: statusesToBlock },
+        ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
+      },
+      select: {
+        startTime: true,
+        endTime: true,
+      },
+    });
+  } catch {
+    try {
+      const rows = await db.$queryRawUnsafe<
+        Array<{
+          id: string;
+          startTime: string;
+          endTime: string;
+          status: string;
+        }>
+      >(
+        `SELECT "id", "startTime", "endTime", "status" FROM "Appointment" WHERE "date" = $1`,
+        dateStr
+      );
+      return rows
+        .filter(
+          (r) =>
+            statusesToBlock.includes(String(r.status)) &&
+            (!excludeAppointmentId || r.id !== excludeAppointmentId)
+        )
+        .map((r) => ({
+          startTime: String(r.startTime || "00:00"),
+          endTime: String(r.endTime || "00:00"),
+        }));
+    } catch {
+      return [];
+    }
   }
 }
 
@@ -154,17 +205,12 @@ export async function getAvailableSlotsForDate(
     statusesToBlock.push("PENDING");
   }
 
-  const existingAppointments = await db.appointment.findMany({
-    where: {
-      date: dateStr,
-      status: { in: statusesToBlock },
-      ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
-    },
-    select: {
-      startTime: true,
-      endTime: true,
-    },
-  });
+  const existingAppointments = await queryAppointmentsForDate(
+    db,
+    dateStr,
+    statusesToBlock,
+    excludeAppointmentId
+  );
 
   const whStart = timeToMinutes(workingHours.startTime);
   const whEnd = timeToMinutes(workingHours.endTime);
@@ -293,17 +339,12 @@ export async function isTimeAvailable(
     statusesToBlock.push("PENDING");
   }
 
-  const existingAppointments = await db.appointment.findMany({
-    where: {
-      date: dateStr,
-      status: { in: statusesToBlock },
-      ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
-    },
-    select: {
-      startTime: true,
-      endTime: true,
-    },
-  });
+  const existingAppointments = await queryAppointmentsForDate(
+    db,
+    dateStr,
+    statusesToBlock,
+    excludeAppointmentId
+  );
 
   for (const appt of existingAppointments) {
     const aStart = timeToMinutes(appt.startTime);

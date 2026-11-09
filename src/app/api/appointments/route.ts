@@ -20,6 +20,7 @@ import {
 import { validateBookingPayload } from "@/lib/validation";
 import { getCachedAllServices, getCachedSettings } from "@/lib/cache";
 import { emitAdminNotification } from "@/lib/notifications";
+import { ensureDatabaseSchemaSynced } from "@/lib/db-sync";
 
 function mapStatusToUi(
   status: string,
@@ -56,6 +57,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
+    await ensureDatabaseSchemaSynced();
     await expireOverduePendingAppointments();
 
     const { searchParams } = new URL(request.url);
@@ -153,6 +155,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await ensureDatabaseSchemaSynced();
     const session = await getAdminSession();
     const isAdmin = Boolean(session);
 

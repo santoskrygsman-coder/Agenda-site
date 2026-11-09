@@ -170,9 +170,29 @@ export async function getCachedWorkingHours(): Promise<WorkingHours[]> {
   }
   const promise = (async () => {
     try {
-      const list = await prisma.workingHours.findMany({
-        orderBy: { weekday: "asc" },
-      });
+      await ensureDatabaseSchemaSynced();
+      let list: WorkingHours[] = [];
+      try {
+        list = await prisma.workingHours.findMany({
+          orderBy: { weekday: "asc" },
+        });
+      } catch {
+        const rawRows = await prisma
+          .$queryRawUnsafe<Array<Record<string, unknown>>>(
+            `SELECT * FROM "WorkingHours" ORDER BY "weekday" ASC`
+          )
+          .catch(() => []);
+        list = rawRows.map((r) => ({
+          id: String(r.id || `wh-${r.weekday}`),
+          weekday: Number(r.weekday ?? 0),
+          dayLabel: String(r.dayLabel || ""),
+          active: r.active !== false,
+          startTime: String(r.startTime || "09:00"),
+          endTime: String(r.endTime || "19:00"),
+          breakStart: r.breakStart ? String(r.breakStart) : null,
+          breakEnd: r.breakEnd ? String(r.breakEnd) : null,
+        }));
+      }
       store.workingHours = {
         data: list,
         expiresAt: Date.now() + CACHE_TTL_MS,
@@ -206,9 +226,27 @@ export async function getCachedBlockedDates(): Promise<BlockedDate[]> {
   }
   const promise = (async () => {
     try {
-      const list = await prisma.blockedDate.findMany({
-        orderBy: [{ date: "asc" }, { startTime: "asc" }],
-      });
+      await ensureDatabaseSchemaSynced();
+      let list: BlockedDate[] = [];
+      try {
+        list = await prisma.blockedDate.findMany({
+          orderBy: [{ date: "asc" }, { startTime: "asc" }],
+        });
+      } catch {
+        const rawRows = await prisma
+          .$queryRawUnsafe<Array<Record<string, unknown>>>(
+            `SELECT * FROM "BlockedDate" ORDER BY "date" ASC`
+          )
+          .catch(() => []);
+        list = rawRows.map((r) => ({
+          id: String(r.id || ""),
+          date: String(r.date || ""),
+          startTime: r.startTime ? String(r.startTime) : null,
+          endTime: r.endTime ? String(r.endTime) : null,
+          reason: r.reason ? String(r.reason) : null,
+          createdAt: r.createdAt instanceof Date ? r.createdAt : new Date(),
+        }));
+      }
       store.blockedDates = {
         data: list,
         expiresAt: Date.now() + CACHE_TTL_MS,

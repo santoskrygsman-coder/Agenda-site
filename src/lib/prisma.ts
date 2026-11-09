@@ -11,9 +11,15 @@ function buildOptimizedDatabaseUrl(): string | undefined {
   }
   try {
     const parsed = new URL(rawUrl);
+    if (
+      parsed.hostname.includes("pooler.supabase.com") ||
+      parsed.port === "6543"
+    ) {
+      parsed.searchParams.set("pgbouncer", "true");
+    }
     const currentLimit = Number(parsed.searchParams.get("connection_limit"));
-    if (!currentLimit || currentLimit < 10) {
-      parsed.searchParams.set("connection_limit", "10");
+    if (!currentLimit || currentLimit > 5) {
+      parsed.searchParams.set("connection_limit", "3");
     }
     if (!parsed.searchParams.get("pool_timeout")) {
       parsed.searchParams.set("pool_timeout", "20");
@@ -26,11 +32,10 @@ function buildOptimizedDatabaseUrl(): string | undefined {
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
-  prismaPooledV2: PrismaClient | undefined;
+  prismaPooledV3: PrismaClient | undefined;
 };
 
-// Desconecta eventual instância legada que estava limitada a 1 conexão (connection_limit=1)
-if (globalForPrisma.prisma && !globalForPrisma.prismaPooledV2) {
+if (globalForPrisma.prisma && !globalForPrisma.prismaPooledV3) {
   globalForPrisma.prisma.$disconnect().catch(() => {});
   globalForPrisma.prisma = undefined;
 }
@@ -38,7 +43,7 @@ if (globalForPrisma.prisma && !globalForPrisma.prismaPooledV2) {
 const optimizedUrl = buildOptimizedDatabaseUrl();
 
 export const prisma =
-  globalForPrisma.prismaPooledV2 ??
+  globalForPrisma.prismaPooledV3 ??
   new PrismaClient(
     optimizedUrl
       ? {
@@ -49,6 +54,4 @@ export const prisma =
       : undefined
   );
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prismaPooledV2 = prisma;
-}
+globalForPrisma.prismaPooledV3 = prisma;
