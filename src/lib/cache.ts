@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { ensureDatabaseSchemaSynced } from "./db-sync";
 import type {
   Settings,
   Service,
@@ -44,9 +45,43 @@ export async function getCachedSettings(): Promise<Settings> {
   }
   const promise = (async () => {
     try {
-      let settings = await prisma.settings.findFirst();
-      if (!settings) {
-        settings = await prisma.settings.create({ data: {} });
+      await ensureDatabaseSchemaSynced();
+      let settings: Settings | null = null;
+      try {
+        settings = await prisma.settings.findFirst();
+        if (!settings) {
+          settings = await prisma.settings.create({ data: {} });
+        }
+      } catch {
+        const rows = await prisma
+          .$queryRawUnsafe<Array<Record<string, unknown>>>(
+            `SELECT * FROM "Settings" LIMIT 1`
+          )
+          .catch(() => []);
+        const r = rows[0] || {};
+        settings = {
+          id: String(r.id || "default-settings"),
+          professionalName: String(
+            r.professionalName || "Emile Lash Designer"
+          ),
+          specialty: String(
+            r.specialty ||
+              "Cílios • Sobrancelha • Brow Lamination • Lash Lifting"
+          ),
+          description: r.description
+            ? String(r.description)
+            : "Centro - Posto da Mata • @emiledesiigner",
+          whatsapp: String(r.whatsapp || ""),
+          pixKey: String(r.pixKey || "000.000.000-00"),
+          pixKeyType: String(r.pixKeyType || "CPF"),
+          signalPercentage:
+            r.signalPercentage != null ? Number(r.signalPercentage) : 50,
+          holdMinutes: r.holdMinutes != null ? Number(r.holdMinutes) : 15,
+          minAdvanceMinutes:
+            r.minAdvanceMinutes != null ? Number(r.minAdvanceMinutes) : 0,
+          maxDaysAhead: r.maxDaysAhead != null ? Number(r.maxDaysAhead) : 60,
+          pendingBlocksSlot: r.pendingBlocksSlot !== false,
+        };
       }
       store.settings = {
         data: settings,
@@ -81,9 +116,34 @@ export async function getCachedAllServices(): Promise<Service[]> {
   }
   const promise = (async () => {
     try {
-      const list = await prisma.service.findMany({
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-      });
+      await ensureDatabaseSchemaSynced();
+      let list: Service[] = [];
+      try {
+        list = await prisma.service.findMany({
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        });
+      } catch {
+        const rawRows = await prisma
+          .$queryRawUnsafe<Array<Record<string, unknown>>>(
+            `SELECT * FROM "Service" ORDER BY "createdAt" ASC`
+          )
+          .catch(() => []);
+        list = rawRows.map((r, idx) => ({
+          id: String(r.id),
+          name: String(r.name || ""),
+          description: r.description ? String(r.description) : "",
+          price: Number(r.price || 0),
+          duration: Number(r.duration || 90),
+          image: String(r.image || "/images/service-classica.png"),
+          active: r.active !== false,
+          requiresDeposit: r.requiresDeposit !== false,
+          depositPercentage:
+            r.depositPercentage != null ? Number(r.depositPercentage) : 50,
+          sortOrder: r.sortOrder != null ? Number(r.sortOrder) : idx,
+          createdAt: r.createdAt instanceof Date ? r.createdAt : new Date(),
+          updatedAt: r.updatedAt instanceof Date ? r.updatedAt : new Date(),
+        }));
+      }
       store.servicesAll = {
         data: list,
         expiresAt: Date.now() + CACHE_TTL_MS,

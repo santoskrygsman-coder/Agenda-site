@@ -32,6 +32,7 @@ interface BookingContextType {
   services: ServiceItem[];
   allServices: ServiceItem[];
   servicesLoading: boolean;
+  servicesError: string;
   refreshServices: (includeAll?: boolean) => Promise<void>;
   toggleServiceActive: (id: string) => Promise<void>;
   createOrUpdateService: (payload: {
@@ -138,6 +139,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
   const [allServices, setAllServices] = useState<ServiceItem[]>([]);
   const [servicesLoading, setServicesLoading] = useState<boolean>(true);
   const [servicesLoaded, setServicesLoaded] = useState<boolean>(false);
+  const [servicesError, setServicesError] = useState<string>("");
   const [selectedServiceId, setSelectedServiceId] = useState<string>("");
 
   const [selectedYear, setSelectedYear] = useState<number>(
@@ -196,6 +198,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
     MOCK_SERVICES[0];
 
   const refreshServices = useCallback(async (includeAll = false) => {
+    setServicesError("");
     try {
       const res = await fetch("/api/services", { cache: "no-store" });
       let activeList: ServiceItem[] = [];
@@ -219,6 +222,10 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
             return nextId;
           });
         }
+      } else {
+        setServicesError(
+          "Não foi possível carregar a lista de serviços no momento."
+        );
       }
 
       const isAdminPath =
@@ -235,16 +242,18 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
           const fullList = Array.isArray(adminData) ? adminData : activeList;
           setAllServices(fullList);
           writeCachedJson(STORAGE_ALL_SERVICES_KEY, fullList);
-        } else {
+        } else if (activeList.length > 0) {
           setAllServices(activeList);
           writeCachedJson(STORAGE_ALL_SERVICES_KEY, activeList);
         }
-      } else {
+      } else if (activeList.length > 0) {
         setAllServices(activeList);
         writeCachedJson(STORAGE_ALL_SERVICES_KEY, activeList);
       }
     } catch {
-      // Fallback silencioso mantendo cache local
+      setServicesError(
+        "Falha de conexão ao carregar os serviços. Verifique sua internet."
+      );
     } finally {
       setServicesLoading(false);
       setServicesLoaded(true);
@@ -619,6 +628,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         services,
         allServices,
         servicesLoading,
+        servicesError,
         refreshServices,
         toggleServiceActive,
         createOrUpdateService,

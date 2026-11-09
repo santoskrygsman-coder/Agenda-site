@@ -11,8 +11,14 @@ import { useBooking } from "@/context/BookingContext";
 
 export default function ChooseServicePage() {
   const router = useRouter();
-  const { services, servicesLoading, setSelectedServiceById, todayOpenStatus } =
-    useBooking();
+  const {
+    services,
+    servicesLoading,
+    servicesError,
+    refreshServices,
+    setSelectedServiceById,
+    todayOpenStatus,
+  } = useBooking();
   const [categoryFilter, setCategoryFilter] = useState<
     "todos" | "cilios" | "lifting_sobrancelha" | "manutencao"
   >("todos");
@@ -105,6 +111,19 @@ export default function ChooseServicePage() {
                   </div>
                 </div>
               ))}
+            </div>
+          ) : services.length === 0 ? (
+            <div className="bg-[#FAF5F1] border border-[#E5D4C9] rounded-[18px] p-4 text-center space-y-2.5">
+              <p className="text-[13px] font-medium text-[#5C4841]">
+                {servicesError || "Nenhum procedimento disponível no momento."}
+              </p>
+              <button
+                type="button"
+                onClick={() => refreshServices()}
+                className="min-h-[40px] px-4 py-2 rounded-full bg-[#B87472] text-white text-[12.5px] font-semibold active:scale-95 transition"
+              >
+                Tentar novamente
+              </button>
             </div>
           ) : (
             filteredServices.map((service) => (

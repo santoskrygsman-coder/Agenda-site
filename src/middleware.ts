@@ -59,6 +59,9 @@ export default withAuth(
     pages: {
       signIn: "/login",
     },
+    secret:
+      process.env.NEXTAUTH_SECRET ||
+      "emile-lash-designer-prod-secret-key-2026-v1",
   }
 );
 

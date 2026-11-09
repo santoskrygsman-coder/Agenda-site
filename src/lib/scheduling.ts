@@ -6,6 +6,7 @@ import {
   getCachedSettings,
   getCachedWorkingHours,
 } from "./cache";
+import { ensureDatabaseSchemaSynced } from "./db-sync";
 
 // Fila de serialização em memória para complementar transações do banco e impedir condições de corrida (race conditions)
 let bookingLockPromise: Promise<unknown> = Promise.resolve();
@@ -72,22 +73,27 @@ export async function expireOverduePendingAppointments(
     return 0;
   }
   lastExpireCheckMs = nowMs;
-  const now = new Date(nowMs);
-  const result = await db.appointment.updateMany({
-    where: {
-      status: "PENDING",
-      paymentStatus: "PENDING_SIGNAL",
-      receiptReportedAt: null,
-      expiresAt: {
-        not: null,
-        lt: now,
+  try {
+    await ensureDatabaseSchemaSynced();
+    const now = new Date(nowMs);
+    const result = await db.appointment.updateMany({
+      where: {
+        status: "PENDING",
+        paymentStatus: "PENDING_SIGNAL",
+        receiptReportedAt: null,
+        expiresAt: {
+          not: null,
+          lt: now,
+        },
       },
-    },
-    data: {
-      status: "CANCELLED",
-    },
-  });
-  return result.count;
+      data: {
+        status: "CANCELLED",
+      },
+    });
+    return result.count;
+  } catch {
+    return 0;
+  }
 }
 
 export async function getAvailableSlotsForDate(
