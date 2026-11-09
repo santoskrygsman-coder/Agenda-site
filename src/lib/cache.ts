@@ -6,7 +6,7 @@ import type {
   BlockedDate,
 } from "@prisma/client";
 
-const CACHE_TTL_MS = 60_000;
+const CACHE_TTL_MS = 1_500;
 
 interface CacheEntry<T> {
   data: T;

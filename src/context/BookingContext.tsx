@@ -31,6 +31,7 @@ interface StudioSettings {
 interface BookingContextType {
   services: ServiceItem[];
   allServices: ServiceItem[];
+  servicesLoading: boolean;
   refreshServices: (includeAll?: boolean) => Promise<void>;
   toggleServiceActive: (id: string) => Promise<void>;
   createOrUpdateService: (payload: {
@@ -93,12 +94,51 @@ interface BookingContextType {
 
 const BookingContext = createContext<BookingContextType | undefined>(undefined);
 
+const STORAGE_SERVICES_KEY = "emile_services_cache_v2";
+const STORAGE_ALL_SERVICES_KEY = "emile_all_services_cache_v2";
+const STORAGE_SELECTED_SVC_KEY = "emile_selected_service_id_v2";
+const STORAGE_OPEN_STATUS_KEY = "emile_open_status_cache_v2";
+const STORAGE_SETTINGS_KEY = "emile_settings_cache_v2";
+
+function readCachedJson<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeCachedJson<T>(key: string, value: T): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
 export function BookingProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const defaultBookingDate = getDefaultBookingDate();
-  const [services, setServices] = useState<ServiceItem[]>(MOCK_SERVICES);
-  const [allServices, setAllServices] = useState<ServiceItem[]>(MOCK_SERVICES);
-  const [selectedServiceId, setSelectedServiceId] = useState<string>("");
+  const [services, setServices] = useState<ServiceItem[]>(() =>
+    readCachedJson<ServiceItem[]>(STORAGE_SERVICES_KEY, [])
+  );
+  const [allServices, setAllServices] = useState<ServiceItem[]>(() =>
+    readCachedJson<ServiceItem[]>(STORAGE_ALL_SERVICES_KEY, [])
+  );
+  const [servicesLoading, setServicesLoading] = useState<boolean>(true);
+  const [servicesLoaded, setServicesLoaded] = useState<boolean>(false);
+  const [selectedServiceId, setSelectedServiceId] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return window.sessionStorage.getItem(STORAGE_SELECTED_SVC_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
 
   const [selectedYear, setSelectedYear] = useState<number>(
     defaultBookingDate.year
@@ -109,24 +149,11 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
   const [selectedDay, setSelectedDayState] = useState<number>(
     defaultBookingDate.day
   );
-  const [selectedTime, setSelectedTime] = useState<string>("14:00");
+  const [selectedTime, setSelectedTime] = useState<string>("");
 
-  const [availableTimes, setAvailableTimes] = useState<string[]>([
-    "09:00",
-    "09:30",
-    "10:00",
-    "10:30",
-    "13:00",
-    "13:30",
-    "14:00",
-    "14:30",
-    "15:00",
-    "15:30",
-    "16:00",
-    "16:30",
-  ]);
+  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [loadingAvailability, setLoadingAvailability] =
-    useState<boolean>(false);
+    useState<boolean>(true);
   const [availabilityReason, setAvailabilityReason] = useState<
     string | undefined
   >(undefined);
@@ -145,20 +172,22 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
   const [lastCreatedExpiresAt, setLastCreatedExpiresAt] = useState<
     string | null
   >(null);
-  const [todayOpenStatus, setTodayOpenStatus] = useState<string>(
-    "Aberto hoje até 18:00"
+  const [todayOpenStatus, setTodayOpenStatus] = useState<string>(() =>
+    readCachedJson<string>(STORAGE_OPEN_STATUS_KEY, "")
   );
 
-  const [studioSettings, setStudioSettings] = useState<StudioSettings>({
-    professionalName: "Emile Lash Designer",
-    specialty: "Cílios • Sobrancelha • Brow Lamination • Lash Lifting",
-    description: "Centro - Posto da Mata • @emiledesiigner",
-    whatsapp: "",
-    pixKey: "000.000.000-00",
-    pixKeyType: "CPF",
-    signalPercentage: 50,
-    holdMinutes: 15,
-  });
+  const [studioSettings, setStudioSettings] = useState<StudioSettings>(() =>
+    readCachedJson<StudioSettings>(STORAGE_SETTINGS_KEY, {
+      professionalName: "Emile Lash Designer",
+      specialty: "Cílios • Sobrancelha • Brow Lamination • Lash Lifting",
+      description: "Centro - Posto da Mata • @emiledesiigner",
+      whatsapp: "",
+      pixKey: "000.000.000-00",
+      pixKeyType: "CPF",
+      signalPercentage: 50,
+      holdMinutes: 15,
+    })
+  );
 
   const [selectedAppointment, setSelectedAppointment] =
     useState<AppointmentItem | null>(null);
@@ -172,40 +201,33 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
 
   const selectedService =
     services.find((s) => s.id === selectedServiceId) ||
-    services.find((s) => s.name.toLowerCase().includes("brasileiro")) ||
+    allServices.find((s) => s.id === selectedServiceId) ||
     services[0] ||
-    MOCK_SERVICES[1];
+    allServices[0] ||
+    MOCK_SERVICES[0];
 
   const refreshServices = useCallback(async (includeAll = false) => {
     try {
-      const res = await fetch("/api/services");
+      const res = await fetch("/api/services", { cache: "no-store" });
       let activeList: ServiceItem[] = [];
       if (res.ok) {
         const data: ServiceItem[] = await res.json();
-        if (data.length > 0) {
-          activeList = data;
-          setServices(data);
+        activeList = Array.isArray(data) ? data : [];
+        setServices(activeList);
+        writeCachedJson(STORAGE_SERVICES_KEY, activeList);
+
+        if (activeList.length > 0) {
           setSelectedServiceId((prev) => {
-            if (prev && data.some((s) => s.id === prev)) return prev;
-            if (prev) {
-              const slugWords = prev
-                .toLowerCase()
-                .replace(/[-_]/g, " ")
-                .split(/\s+/)
-                .filter((w) => w.length >= 3);
-              const matchedBySlug = data.find((s) => {
-                const sName = s.name
-                  .toLowerCase()
-                  .normalize("NFD")
-                  .replace(/[\u0300-\u036f]/g, "");
-                return slugWords.some((w) => sName.includes(w));
-              });
-              if (matchedBySlug) return matchedBySlug.id;
+            let nextId = prev;
+            if (!prev || !activeList.some((s) => s.id === prev)) {
+              nextId = activeList[0].id;
             }
-            const br = data.find((s) =>
-              s.name.toLowerCase().includes("brasileiro")
-            );
-            return br ? br.id : data[0].id;
+            if (typeof window !== "undefined") {
+              try {
+                window.sessionStorage.setItem(STORAGE_SELECTED_SVC_KEY, nextId);
+              } catch {}
+            }
+            return nextId;
           });
         }
       }
@@ -216,20 +238,27 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
           window.location.pathname.startsWith("/admin"));
 
       if (isAdminPath) {
-        const adminRes = await fetch("/api/services?all=true");
+        const adminRes = await fetch("/api/services?all=true", {
+          cache: "no-store",
+        });
         if (adminRes.ok) {
           const adminData: ServiceItem[] = await adminRes.json();
-          if (adminData.length > 0) {
-            setAllServices(adminData);
-          }
-        } else if (activeList.length > 0) {
+          const fullList = Array.isArray(adminData) ? adminData : activeList;
+          setAllServices(fullList);
+          writeCachedJson(STORAGE_ALL_SERVICES_KEY, fullList);
+        } else {
           setAllServices(activeList);
+          writeCachedJson(STORAGE_ALL_SERVICES_KEY, activeList);
         }
-      } else if (activeList.length > 0) {
+      } else {
         setAllServices(activeList);
+        writeCachedJson(STORAGE_ALL_SERVICES_KEY, activeList);
       }
     } catch {
-      // Fallback silencioso
+      // Fallback silencioso mantendo cache local
+    } finally {
+      setServicesLoading(false);
+      setServicesLoaded(true);
     }
   }, []);
 
@@ -239,7 +268,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       if (!r.ok) return;
       const data = await r.json();
       if (data) {
-        setStudioSettings({
+        const nextSettings: StudioSettings = {
           professionalName:
             data.professionalName &&
             data.professionalName !== "Estética de Cílios"
@@ -256,7 +285,9 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
           pixKeyType: data.pixKeyType || "CPF",
           signalPercentage: data.signalPercentage ?? 50,
           holdMinutes: data.holdMinutes ?? 15,
-        });
+        };
+        setStudioSettings(nextSettings);
+        writeCachedJson(STORAGE_SETTINGS_KEY, nextSettings);
       }
     } catch {
       // Fallback silencioso
@@ -284,18 +315,19 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
             (w: { weekday: number; active: boolean; endTime: string }) =>
               w.weekday === todayWeekday
           );
+          let nextStatus = "Atendimento com hora marcada";
           if (todayWh && todayWh.active) {
-            setTodayOpenStatus(`Aberto hoje até ${todayWh.endTime}`);
+            nextStatus = `Aberto hoje até ${todayWh.endTime}`;
           } else {
             const anyActive = whList.find(
               (w: { active: boolean; endTime: string }) => w.active
             );
-            setTodayOpenStatus(
-              anyActive
-                ? `Seg a Sáb até ${anyActive.endTime}`
-                : "Atendimento com hora marcada"
-            );
+            if (anyActive) {
+              nextStatus = `Seg a Sáb até ${anyActive.endTime}`;
+            }
           }
+          setTodayOpenStatus(nextStatus);
+          writeCachedJson(STORAGE_OPEN_STATUS_KEY, nextStatus);
         }
         setScheduleVersion((v) => v + 1);
       } catch {
@@ -311,9 +343,12 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
     refreshWorkingHours();
   }, [refreshServices, refreshSettings, refreshWorkingHours]);
 
-  // Carregar disponibilidade real nas telas da cliente quando data, serviço ou expediente mudar
+  // Carregar disponibilidade real nas telas da cliente somente após os serviços reais estarem carregados
   useEffect(() => {
     if (pathname?.startsWith("/admin") || pathname === "/login") {
+      return;
+    }
+    if (!servicesLoaded && services.length === 0) {
       return;
     }
     let active = true;
@@ -341,9 +376,11 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
           const slots: string[] = Array.isArray(data.times) ? data.times : [];
           setAvailableTimes(slots);
           setAvailabilityReason(data.reason);
-          if (slots.length > 0 && !slots.includes(selectedTime)) {
-            setSelectedTime(slots.includes("14:00") ? "14:00" : slots[0]);
-          }
+          setSelectedTime((prevTime) => {
+            if (slots.length === 0) return "";
+            if (prevTime && slots.includes(prevTime)) return prevTime;
+            return slots.includes("14:00") ? "14:00" : slots[0];
+          });
         }
       } catch {
         // Ignorar erro de rede
@@ -357,6 +394,8 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
     };
   }, [
     pathname,
+    servicesLoaded,
+    services.length,
     selectedDate,
     selectedService?.id,
     selectedService?.durationMinutes,
@@ -372,7 +411,10 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       const next = prev.map((item) =>
         item.id === id ? { ...item, active: nextActive } : item
       );
-      setServices(next.filter((item) => item.active));
+      const nextActiveList = next.filter((item) => item.active);
+      setServices(nextActiveList);
+      writeCachedJson(STORAGE_ALL_SERVICES_KEY, next);
+      writeCachedJson(STORAGE_SERVICES_KEY, nextActiveList);
       return next;
     });
 
@@ -383,22 +425,10 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ active: nextActive }),
       });
       if (!res.ok) {
-        setAllServices((prev) => {
-          const reverted = prev.map((item) =>
-            item.id === id ? { ...item, active: target.active } : item
-          );
-          setServices(reverted.filter((item) => item.active));
-          return reverted;
-        });
+        await refreshServices(true);
       }
     } catch {
-      setAllServices((prev) => {
-        const reverted = prev.map((item) =>
-          item.id === id ? { ...item, active: target.active } : item
-        );
-        setServices(reverted.filter((item) => item.active));
-        return reverted;
-      });
+      await refreshServices(true);
     }
   };
 
@@ -441,7 +471,10 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       }
       setAllServices((prev) => {
         const next = prev.filter((item) => item.id !== id);
-        setServices(next.filter((item) => item.active));
+        const nextActiveList = next.filter((item) => item.active);
+        setServices(nextActiveList);
+        writeCachedJson(STORAGE_ALL_SERVICES_KEY, next);
+        writeCachedJson(STORAGE_SERVICES_KEY, nextActiveList);
         return next;
       });
       return { ok: true };
@@ -451,14 +484,29 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
   };
 
   const setSelectedServiceById = (id: string) => {
+    if (id !== selectedServiceId) {
+      setLoadingAvailability(true);
+      setAvailableTimes([]);
+    }
     setSelectedServiceId(id);
+    if (typeof window !== "undefined") {
+      try {
+        window.sessionStorage.setItem(STORAGE_SELECTED_SVC_KEY, id);
+      } catch {}
+    }
   };
 
   const setSelectedDay = (day: number) => {
+    if (day !== selectedDay) {
+      setLoadingAvailability(true);
+    }
     setSelectedDayState(day);
   };
 
   const setSelectedYearMonth = (year: number, month: number) => {
+    if (year !== selectedYear || month !== selectedMonth) {
+      setLoadingAvailability(true);
+    }
     setSelectedYear(year);
     setSelectedMonth(month);
   };
@@ -547,6 +595,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       value={{
         services,
         allServices,
+        servicesLoading,
         refreshServices,
         toggleServiceActive,
         createOrUpdateService,

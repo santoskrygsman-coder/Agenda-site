@@ -102,6 +102,7 @@ async function preparePhotoDataUrl(file: File | Blob): Promise<string> {
 export default function AdminServicesPage() {
   const {
     allServices,
+    servicesLoading,
     refreshServices,
     toggleServiceActive,
     createOrUpdateService,
@@ -415,15 +416,33 @@ export default function AdminServicesPage() {
         )}
 
         <div className="space-y-2.5">
-          {allServices.map((svc) => (
-            <ServiceCard
-              key={svc.id}
-              service={svc}
-              mode="admin"
-              onToggleActive={toggleServiceActive}
-              onEdit={openEditModal}
-            />
-          ))}
+          {servicesLoading && allServices.length === 0 ? (
+            <div className="space-y-2.5">
+              {[1, 2, 3].map((idx) => (
+                <div
+                  key={idx}
+                  className="w-full h-[92px] bg-[#FAF5F1] border border-[#EDE0D7] rounded-[18px] p-3 flex items-center gap-3 animate-pulse"
+                >
+                  <div className="w-[62px] h-[62px] rounded-full bg-[#EADCD3] shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3.5 w-2/3 bg-[#EADCD3] rounded-full" />
+                    <div className="h-2.5 w-4/5 bg-[#F2E6DF] rounded-full" />
+                    <div className="h-3 w-1/3 bg-[#EADCD3] rounded-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            allServices.map((svc) => (
+              <ServiceCard
+                key={svc.id}
+                service={svc}
+                mode="admin"
+                onToggleActive={toggleServiceActive}
+                onEdit={openEditModal}
+              />
+            ))
+          )}
         </div>
 
         <div className="mt-3.5">

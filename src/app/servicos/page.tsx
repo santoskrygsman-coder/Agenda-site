@@ -11,7 +11,8 @@ import { useBooking } from "@/context/BookingContext";
 
 export default function ChooseServicePage() {
   const router = useRouter();
-  const { services, setSelectedServiceById, todayOpenStatus } = useBooking();
+  const { services, servicesLoading, setSelectedServiceById, todayOpenStatus } =
+    useBooking();
   const [categoryFilter, setCategoryFilter] = useState<
     "todos" | "cilios" | "lifting_sobrancelha" | "manutencao"
   >("todos");
@@ -46,10 +47,12 @@ export default function ChooseServicePage() {
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#6E5850]">
             Extensão e Design de Cílios
           </span>
-          <span className="inline-flex items-center gap-1 bg-[#FAF5F1] border border-[#E5D4C9] rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-[#4E3B35]">
-            <Clock size={11} className="text-[#B87472] shrink-0" />
-            <span>{todayOpenStatus}</span>
-          </span>
+          {todayOpenStatus && (
+            <span className="inline-flex items-center gap-1 bg-[#FAF5F1] border border-[#E5D4C9] rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-[#4E3B35]">
+              <Clock size={11} className="text-[#B87472] shrink-0" />
+              <span>{todayOpenStatus}</span>
+            </span>
+          )}
         </div>
 
         {/* Abas de filtro rápido por categoria com área de toque confortável */}
@@ -87,17 +90,35 @@ export default function ChooseServicePage() {
         </div>
 
         <div className="space-y-2.5">
-          {filteredServices.map((service) => (
-            <ServiceCard
-              key={service.id}
-              service={service}
-              mode="client"
-              onSelect={(svc) => {
-                setSelectedServiceById(svc.id);
-                router.push("/agendar/data");
-              }}
-            />
-          ))}
+          {servicesLoading && services.length === 0 ? (
+            <div className="space-y-2.5">
+              {[1, 2, 3].map((idx) => (
+                <div
+                  key={idx}
+                  className="w-full h-[92px] bg-[#FAF5F1] border border-[#EDE0D7] rounded-[18px] p-3 flex items-center gap-3 animate-pulse"
+                >
+                  <div className="w-[62px] h-[62px] rounded-full bg-[#EADCD3] shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3.5 w-2/3 bg-[#EADCD3] rounded-full" />
+                    <div className="h-2.5 w-4/5 bg-[#F2E6DF] rounded-full" />
+                    <div className="h-3 w-1/3 bg-[#EADCD3] rounded-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            filteredServices.map((service) => (
+              <ServiceCard
+                key={service.id}
+                service={service}
+                mode="client"
+                onSelect={(svc) => {
+                  setSelectedServiceById(svc.id);
+                  router.push("/agendar/data");
+                }}
+              />
+            ))
+          )}
         </div>
         <BotanicalSprigRight className="w-[80px] h-[55px] absolute right-1 bottom-1 opacity-60 pointer-events-none" />
       </div>

@@ -27,6 +27,7 @@ export default function ClientHomePage() {
   const router = useRouter();
   const {
     services,
+    servicesLoading,
     setSelectedServiceById,
     setIsMenuOpen,
     studioSettings,
@@ -140,11 +141,13 @@ export default function ClientHomePage() {
           {/* Subtle golden botanical leaves on the right */}
           <BotanicalSprigRight className="w-[110px] min-[375px]:w-[120px] h-[80px] absolute right-0 top-3 opacity-85 pointer-events-none" />
 
-          <div className="flex flex-wrap items-center gap-1.5 mb-2">
-            <div className="inline-flex items-center gap-1.5 bg-[#FAF5F1]/95 border border-[#E4D2C7] rounded-full px-2.5 py-1 text-[11px] font-semibold text-[#4E3B35] shadow-2xs">
-              <Clock size={11.5} className="text-[#B87472] shrink-0" />
-              <span>{todayOpenStatus}</span>
-            </div>
+          <div className="flex flex-wrap items-center gap-1.5 mb-2 min-h-[26px]">
+            {todayOpenStatus && (
+              <div className="inline-flex items-center gap-1.5 bg-[#FAF5F1]/95 border border-[#E4D2C7] rounded-full px-2.5 py-1 text-[11px] font-semibold text-[#4E3B35] shadow-2xs">
+                <Clock size={11.5} className="text-[#B87472] shrink-0" />
+                <span>{todayOpenStatus}</span>
+              </div>
+            )}
             <span className="inline-flex items-center bg-[#F4E3DC]/95 border border-[#E5CEC4] rounded-full px-2.5 py-1 text-[10.5px] font-bold text-[#3D2923]">
               {studioSettings.professionalName}
             </span>
@@ -261,17 +264,35 @@ export default function ClientHomePage() {
           </div>
 
           <div className="space-y-2.5 pt-0.5">
-            {filteredServices.map((svc) => (
-              <ServiceCard
-                key={svc.id}
-                service={svc}
-                mode="client"
-                onSelect={(selected) => {
-                  setSelectedServiceById(selected.id);
-                  router.push("/agendar/data");
-                }}
-              />
-            ))}
+            {servicesLoading && services.length === 0 ? (
+              <div className="space-y-2.5">
+                {[1, 2, 3].map((idx) => (
+                  <div
+                    key={idx}
+                    className="w-full h-[92px] bg-[#FAF5F1] border border-[#EDE0D7] rounded-[18px] p-3 flex items-center gap-3 animate-pulse"
+                  >
+                    <div className="w-[62px] h-[62px] rounded-full bg-[#EADCD3] shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3.5 w-2/3 bg-[#EADCD3] rounded-full" />
+                      <div className="h-2.5 w-4/5 bg-[#F2E6DF] rounded-full" />
+                      <div className="h-3 w-1/3 bg-[#EADCD3] rounded-full" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              filteredServices.map((svc) => (
+                <ServiceCard
+                  key={svc.id}
+                  service={svc}
+                  mode="client"
+                  onSelect={(selected) => {
+                    setSelectedServiceById(selected.id);
+                    router.push("/agendar/data");
+                  }}
+                />
+              ))
+            )}
           </div>
         </div>
       </div>
